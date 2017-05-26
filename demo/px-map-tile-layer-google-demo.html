@@ -40,8 +40,9 @@
     <px-demo-component>
       <div style="height:400px;width:600px;display:flex">
         <px-map zoom="12" flex-to-size disable-touch-zoom>
+          <!--A valid Google Maps Tile API key needs to be provided in the 'key'
+          attribute of px-map-tile-layer-google-->
           <px-map-tile-layer-google
-            key="AIzaSyAtsyeZHhX17c0rspyXBLXI0hrZUMat5TU"
             map-type="{{props.mapType.value}}"
             language="{{props.language.value}}">
           </px-map-tile-layer-google>

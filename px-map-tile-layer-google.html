@@ -111,13 +111,6 @@ If you do not provide an API key, the map will not load any tiles.
       if (lastOptions.region !== nextOptions.region) {
         this.elementInst.setRegion(nextOptions.region);
       }
-      if (lastOptions.noAttribution !== nextOptions.noAttribution) {
-        if (nextOptions.noAttribution) {
-          this.elementInst.disableAttribution();
-        } else {
-          this.elementInst.enableAttribution();
-        }
-      }
     },
 
     getInstOptions: function() {
