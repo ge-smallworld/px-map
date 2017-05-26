@@ -6,33 +6,33 @@
 <link rel="import" href="../polymer/polymer.html"/>
 
 <!-- Load external dependencies -->
-<link rel="import" href="../leaflet-bing-tiles/leaflet-bing-tiles.html">
+<script src="../leaflet-google-tiles/leaflet-google-layer.js"></script>
 
 <!-- Load required PxMapBehaviors -->
 <link rel="import" href="px-map-behavior-tile-layer.html">
 
 <!--
-Adds a Bing Maps tile layer. Bing tiles are requested by authenticating with a
-valid Bing Maps API key and choosing the type of imagery to display.
+Adds a Google Maps Tile layer. Google tiles are requested by authenticating with a
+valid Google Maps Tile API key and choosing the type of imagery to display.
 
-Note that a Bing Maps API key is not provided by this component. You will need
-to [sign up and create your own API key](https://msdn.microsoft.com/en-us/library/ff428642.aspx).
+Note that a Google Maps Tile API key is not provided by this component. You will need
+to [obtain your own API key](https://developers.google.com/maps/documentation/tile/#api-key).
 
-If you do not provide an API key, the map will not load an tiles.
+If you do not provide an API key, the map will not load any tiles.
 
 ### Usage
 
     <px-map>
-      <px-map-tile-layer-bing key="XXXXXXXXXXXXXXXXXXXXX"></px-map-tile-layer-bing>
+      <px-map-tile-layer-google key="XXXXXXXXXXXXXXXXXXXXX"></px-map-tile-layer-bing>
     </px-map>
 
-@element px-map-tile-layer-bing
+@element px-map-tile-layer-google
 @blurb Loads base layer tiles from the Bing Maps API
 @homepage index.html
 @demo index.html
 -->
 
-<dom-module id="px-map-tile-layer-bing">
+<dom-module id="px-map-tile-layer-google">
   <style>
     :host { display: none }
   </style>
@@ -40,12 +40,12 @@ If you do not provide an API key, the map will not load an tiles.
 </dom-module>
 <script>
   Polymer({
-    is: 'px-map-tile-layer-bing',
+    is: 'px-map-tile-layer-google',
     behaviors: [PxMapBehavior.Layer],
 
     properties: {
       /**
-       * A valid Bing Maps API key. Required to fetch the tiles - if it is not
+       * A valid Google Maps Tile API key. Required to fetch the tiles - if it is not
        * provided, no tiles will be loaded.
        */
       key: {
@@ -54,40 +54,38 @@ If you do not provide an API key, the map will not load an tiles.
       },
 
       /**
-       * The imagery set to use. Choose from the following options:
+       * The map type to use. Choose from the following options:
        *
-       * - 'Aerial' - (default) Aerial imagery
-       * - 'AerialWithLabels' - Aerial imagery with a road overlay.
-       * - 'Roads' - Roads without additional imagery
+       * - 'roadmap' - (default) The standard Google Maps painted map tiles.
+       * - 'satellite' - Satellite imagery.
        *
-       * The following Bing imagery sets are not supported: 'Birdseye',
-       * 'BirdseyeWithLabels', 'OrdnanceSurvey'.
+       * The following Google imagery sets are not supported: 'terrain, streetview'
        */
-      imagery: {
+      mapType: {
         type: String,
-        value: 'Aerial',
+        value: 'roadmap',
         observer: 'shouldUpdateInst'
       },
 
       /**
-       * Set to disable adding attribution information to the map for this
-       * tile layer.
+       * A CLDR region identifier representing the physical location of the
+       * user to whom the tiles are shown.
        *
        * @type {Boolean}
        */
-      disableAttribution: {
-        type: Boolean,
-        value: false,
+      region: {
+        type: String,
+        value: 'gb',
         observer: 'shouldUpdateInst'
       },
 
       /**
-       * Language code for map labels. For a list of acceptable codes, see:
-       * https://msdn.microsoft.com/en-us/library/hh441729.aspx
+       * A Common Locale Data Repository language identifier indicating the
+       * language information on the tiles should be presented in.
        */
-      languageCode: {
+      language: {
         type: String,
-        value: 'en-US',
+        value: 'en-GB',
         observer: 'shouldUpdateInst'
       }
     },
@@ -97,18 +95,21 @@ If you do not provide an API key, the map will not load an tiles.
     },
 
     createInst: function(options) {
-      return L.tileLayer.bing(options);
+      return L.tileLayer.google(options);
     },
 
     updateInst: function(lastOptions, nextOptions) {
-      if (lastOptions.bingMapsKey !== nextOptions.bingMapsKey) {
-        this.elementInst.setKey(nextOptions.bingMapsKey);
+      if (lastOptions.GoogleTileAPIKey !== nextOptions.GoogleTileAPIKey) {
+        this.elementInst.setKey(nextOptions.GoogleTileAPIKey);
       }
-      if (lastOptions.imagerySet !== nextOptions.imagerySet) {
-        this.elementInst.setImagery(nextOptions.imagerySet);
+      if (lastOptions.mapType !== nextOptions.mapType) {
+        this.elementInst.setMapType(nextOptions.mapType);
       }
-      if (lastOptions.culture !== nextOptions.culture) {
-        this.elementInst.setCulture(nextOptions.culture);
+      if (lastOptions.language !== nextOptions.language) {
+        this.elementInst.setLanguage(nextOptions.language);
+      }
+      if (lastOptions.region !== nextOptions.region) {
+        this.elementInst.setRegion(nextOptions.region);
       }
       if (lastOptions.noAttribution !== nextOptions.noAttribution) {
         if (nextOptions.noAttribution) {
@@ -121,10 +122,10 @@ If you do not provide an API key, the map will not load an tiles.
 
     getInstOptions: function() {
       return {
-        bingMapsKey: this.key,
-        imagerySet: this.imagery,
-        culture: this.languageCode,
-        noAttribution: this.disableAttribution
+        GoogleTileAPIKey: this.key,
+        mapType: this.mapType,
+        language: this.language,
+        region: this.region
       };
     }
   });
