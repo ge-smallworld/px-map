@@ -61,7 +61,7 @@ If you do not provide an API key, the map will not load any tiles.
        *
        * The following Google imagery sets are not supported: 'terrain, streetview'
        */
-      mapType: {
+      imagery: {
         type: String,
         value: 'roadmap',
         observer: 'shouldUpdateInst'
@@ -102,8 +102,8 @@ If you do not provide an API key, the map will not load any tiles.
       if (lastOptions.GoogleTileAPIKey !== nextOptions.GoogleTileAPIKey) {
         this.elementInst.setKey(nextOptions.GoogleTileAPIKey);
       }
-      if (lastOptions.mapType !== nextOptions.mapType) {
-        this.elementInst.setMapType(nextOptions.mapType);
+      if (lastOptions.imagery !== nextOptions.imagery) {
+        this.elementInst.setMapType(nextOptions.imagery);
       }
       if (lastOptions.language !== nextOptions.language) {
         this.elementInst.setLanguage(nextOptions.language);
@@ -116,7 +116,7 @@ If you do not provide an API key, the map will not load any tiles.
     getInstOptions: function() {
       return {
         GoogleTileAPIKey: this.key,
-        mapType: this.mapType,
+        imagery: this.imagery,
         language: this.language,
         region: this.region
       };
