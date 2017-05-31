@@ -1,6 +1,6 @@
 {
   "name": "px-map",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "A lightweight framework for building interactive maps with web components",
   "main": [
     "px-map.html"
@@ -36,6 +36,7 @@
     "leaflet-google-tiles": "https://github.com/ge-smallworld/leaflet-google-layer.git"
   },
   "devDependencies": {
+    "px-clearfix-design": "^0.1.19",
     "px-meta-buttons-design": "^0.6.2",
     "px-layout-design": "^0.4.3",
     "px-starter-kit-design": "^0.7.3",
