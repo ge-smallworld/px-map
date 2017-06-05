@@ -33,7 +33,7 @@
     "leaflet": "^1.0.3",
     "leaflet.markercluster": "^1.0.3",
     "leaflet-bing-tiles": "^1.0.0",
-    "leaflet-google-tiles": "https://github.com/ge-smallworld/leaflet-google-layer"
+    "leaflet-google-tiles": "https://github.com/ge-smallworld/leaflet-google-layer.git"
   },
   "devDependencies": {
     "px-clearfix-design": "^0.1.19",
