@@ -424,6 +424,19 @@
         type: Boolean,
         reflectToAttribute: true,
         value: false
+      },
+
+      /**
+       * Set to enable Leaflet Editable geometry manipulation tools on px-map.
+       *
+       * This property is not dynamic and can only be set once when the map is
+       * first initialized.
+       *
+       * @type {Boolean}
+       */
+      editable: {
+        type: Boolean,
+        value: false
       }
     },
 
@@ -506,6 +519,7 @@
       options.scrollWheelZoom = !this.disableScrollZoom;
       options.touchZoom = !this.disableTouchZoom;
       options.attributionControl = !this.disableAttribution;
+      options.editable = this.editable;
 
       return options;
     },
