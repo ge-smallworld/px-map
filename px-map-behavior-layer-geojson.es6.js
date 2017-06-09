@@ -36,6 +36,15 @@
       },
 
       /**
+       * Set to enable Leaflet.Editable
+       *
+       * @type {Boolean}
+       */
+      editable: {
+        type: Boolean,
+        value: false
+      },
+      /**
        * An object with settings that will be used to style each feature when
        * it is added to the map. The following options are available:
        *
@@ -143,7 +152,9 @@
           return this._getStyle(featureProperties, attributeProperties);
         }
       });
-
+      if(this.editable) {
+        this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {editLayer: geojsonLayer});
+      }
       return geojsonLayer;
     },
 
