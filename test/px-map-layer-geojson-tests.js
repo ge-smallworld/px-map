@@ -260,6 +260,15 @@ function runCustomTests() {
       }, 10);
     });
 
+    it('enables Leaflet Editable when created if specified in the attribute', function() {
+      var map = fixture('GeoJSONLayerFixtureEditable');
+
+      // 0ms timeout needed to invoke assertion after the instance is created
+      setTimeout(function() {
+        assert.isDefined(map.elementInst.editTools);
+      },0);
+    });
+
   });
 
   describe('(events) px-map-layer-geojson', function () {
