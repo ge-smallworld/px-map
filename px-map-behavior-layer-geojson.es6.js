@@ -153,7 +153,7 @@
         }
       });
       if(this.editable) {
-        this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {editLayer: geojsonLayer});
+        this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
       }
       return geojsonLayer;
     },
