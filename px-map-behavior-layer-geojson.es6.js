@@ -36,6 +36,15 @@
       },
 
       /**
+       * Set to enable Leaflet.Editable
+       *
+       * @type {Boolean}
+       */
+      editable: {
+        type: Boolean,
+        value: false
+      },
+      /**
        * An object with settings that will be used to style each feature when
        * it is added to the map. The following options are available:
        *
@@ -143,7 +152,21 @@
           return this._getStyle(featureProperties, attributeProperties);
         }
       });
+      if(this.editable) {
+        this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
+        //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
+        this.parentNode.elementInst.editTools.addEventListener('editable:drawing:start', () => {
+          this.parentNode.elementInst.doubleClickZoom.disable();
+        });
 
+        this.parentNode.elementInst.editTools.addEventListener('editable:drawing:end', () => {
+          //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
+          setTimeout(() => {
+            this.parentNode.elementInst.doubleClickZoom.enable();
+          },0);
+        });
+
+      }
       return geojsonLayer;
     },
 

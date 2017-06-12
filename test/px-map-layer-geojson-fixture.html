@@ -100,5 +100,15 @@
       </template>
     </test-fixture>
 
+    <test-fixture id="GeoJSONLayerFixtureEditable">
+      <template>
+        <px-map style="width:200px; height:200px;">
+          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "Point","coordinates": [0.11278152465820314,52.23526420307733]}}]}' editable>
+          </px-map-layer-geojson>
+        </px-map>
+      </template>
+    </test-fixture>
+
+
   </body>
 </html>

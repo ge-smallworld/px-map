@@ -32,7 +32,9 @@
     "px-theme": "^2.0.3",
     "leaflet": "^1.0.3",
     "leaflet.markercluster": "^1.0.3",
-    "leaflet-bing-tiles": "^1.0.0"
+    "leaflet-bing-tiles": "^1.0.0",
+    "leaflet-google-tiles": "https://github.com/ge-smallworld/leaflet-google-layer.git",
+    "leaflet.editable": "^1.0.0"
   },
   "devDependencies": {
     "px-clearfix-design": "^0.1.19",
