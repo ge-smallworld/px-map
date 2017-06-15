@@ -157,7 +157,8 @@
           this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
         } else {
           this.parentNode.elementInst.editTools.featuresLayer.addLayer(geojsonLayer);
-        }        //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
+        }
+        //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
         this.parentNode.elementInst.editTools.addEventListener('editable:drawing:start', () => {
           this.parentNode.elementInst.doubleClickZoom.disable();
         });
