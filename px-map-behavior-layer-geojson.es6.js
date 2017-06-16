@@ -67,8 +67,8 @@
        *
        * @type {Object}
        */
-      featureStyle: {
-        type: Object,
+      featureSVG: {
+        type: String,
         observer: 'shouldUpdateInst'
       },
 
@@ -135,11 +135,19 @@
 
       const geojsonLayer = L.geoJson(options.data, {
         pointToLayer: (feature, latlng) => {
-          const featureProperties = feature.properties.style || {};
-          const attributeProperties = options.featureStyle;
-          const style = this._getStyle(feature, featureProperties, attributeProperties);
+          const featureSVG = feature.properties.svg || {};
+          const attributeSVG = options.featureSVG;
+          const SVG = this._getSVG(feature, featureSVG, attributeSVG);
 
-          return new L.CircleMarker(latlng, style);
+          var SVGURL = "data:image/svg+xml;base64," + btoa(SVG);
+
+          var SVGIcon = L.icon( {
+            iconUrl: SVGURL,
+            iconSize: [300, 300],
+            iconAnchor: [150, 120]
+          } );
+
+          return new L.Marker(latlng, {icon: SVGIcon});
         },
 
         onEachFeature: (feature, layer) => {
@@ -152,6 +160,7 @@
 
           return this._getStyle(featureProperties, styleAttributeProperties);
         }
+
       });
       if(this.editable) {
         if (!this.parentNode.elementInst.editTools) {
@@ -175,15 +184,19 @@
       return geojsonLayer;
     },
 
-    _getStyle(featureProperties, attributeProperties) {
-      return {
-        radius: featureProperties.radius           || attributeProperties.radius      || 5,
-        color: featureProperties.color             || attributeProperties.color       || '#3E87E8', //primary-blue,
-        fillColor: featureProperties.fillColor     || attributeProperties.fillColor   || '#88BDE6', //$dv-light-blue
-        weight: featureProperties.weight           || attributeProperties.weight      || 2,
-        opacity: featureProperties.opacity         || attributeProperties.opacity     || 1,
-        fillOpacity: featureProperties.fillOpacity || attributeProperties.fillOpacity || 0.4
-      };
+    _getSVG(featureProperties, attributeProperties) {
+      // return {
+      //   radius: featureProperties.radius           || attributeProperties.radius      || 5,
+      //   color: featureProperties.color             || attributeProperties.color       || '#3E87E8', //primary-blue,
+      //   fillColor: featureProperties.fillColor     || attributeProperties.fillColor   || '#88BDE6', //$dv-light-blue
+      //   weight: featureProperties.weight           || attributeProperties.weight      || 2,
+      //   opacity: featureProperties.opacity         || attributeProperties.opacity     || 1,
+      //   fillOpacity: featureProperties.fillOpacity || attributeProperties.fillOpacity || 0.4
+      // };
+
+      return '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="300" width="200"><polygon points="100,10, 40,198, 190,78 10,78, 160,198," style="fill:lime;stroke-opacity:1;stroke:purple;stroke-width:5;fill-rule:evenodd;" /></svg>';
+      //featureProperties || attributeProperties ||
+
     },
 
     _bindFeaturePopups() {
