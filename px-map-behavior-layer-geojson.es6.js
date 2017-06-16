@@ -131,7 +131,9 @@
     },
 
     createInst(options) {
-      let geojsonLayer = L.geoJson(options.data, {
+      const styleAttributeProperties = this.getInstOptions().featureStyle;
+
+      const geojsonLayer = L.geoJson(options.data, {
         pointToLayer: (feature, latlng) => {
           const featureProperties = feature.properties.style || {};
           const attributeProperties = options.featureStyle;
@@ -147,9 +149,8 @@
 
         style: (feature) => {
           const featureProperties = feature.properties.style || {};
-          const attributeProperties = this.getInstOptions().featureStyle;
 
-          return this._getStyle(featureProperties, attributeProperties);
+          return this._getStyle(featureProperties, styleAttributeProperties);
         }
       });
       if(this.editable) {
@@ -231,7 +232,14 @@
         this.elementInst.clearLayers();
       }
       else if (Object.keys(nextOptions.data).length && (lastOptions.dataHash !== nextOptions.dataHash || lastOptions.featureStyleHash !== nextOptions.featureStyleHash)) {
+        const styleAttributeProperties = this.getInstOptions().featureStyle;
+
         this.elementInst.clearLayers();
+        this.elementInst.options.style = (feature) => {
+          const featureProperties = feature.properties.style || {};
+          return this._getStyle(featureProperties, styleAttributeProperties);
+        };
+
         this.elementInst.addData(nextOptions.data);
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();

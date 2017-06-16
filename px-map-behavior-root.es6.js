@@ -414,6 +414,22 @@
       },
 
       /**
+       * Stringified HTML that will be used as the first item in your attribution
+       * list. Pass an <a> tag with a link to more information about your
+       * attribution source. Example: '<a href="https://example.com">Example</a>'
+       *
+       * Defaults to a link to the Leaflet.js library. If an empty string is
+       * passed ("") the prefix will be hidden.
+       *
+       * @type {String}
+       */
+      attributionPrefix: {
+        type: String,
+        value: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a>',
+        observer: 'shouldUpdateInst'
+      },
+
+      /**
        * Uses flexbox to set the size of the map. Set the parent container
        * to use `display: flex;` in your CSS and the map will automatically
        * fill the container's available height and width.
@@ -467,6 +483,9 @@
     createInst(options) {
       const mapEl = Polymer.dom(this.root).querySelector('#map');
       const mapInst = L.map(mapEl, options);
+
+      mapInst.attributionControl.setPrefix(options.attributionPrefix);
+
       if (this.isShadyScoped()) {
         mapInst.__addShadyScope = this.scopeSubtree.bind(this);
       }
@@ -514,12 +533,12 @@
       options.minZoom = this.minZoom || 0;
       options.maxZoom = this.maxZoom || 18;
       options.maxBounds = this.maxBounds || undefined;
-
       options.dragging = !this.disableDragging;
       options.scrollWheelZoom = !this.disableScrollZoom;
       options.touchZoom = !this.disableTouchZoom;
       options.attributionControl = !this.disableAttribution;
       options.editable = this.editable;
+      options.attributionPrefix = this.attributionPrefix;
 
       return options;
     },
@@ -561,6 +580,10 @@
       }
       if (lastOptions.touchZoom && !nextOptions.touchZoom) {
         this.elementInst.touchZoom.disable();
+      }
+
+      if (lastOptions.attributionPrefix !== nextOptions.attributionPrefix) {
+        this.elementInst.attributionControl.setPrefix(nextOptions.attributionPrefix);
       }
     },
 
