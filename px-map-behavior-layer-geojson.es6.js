@@ -99,7 +99,7 @@
        */
       featuresSvg: {
         type: String
-      }
+      },
 
       /**
        * Leaflet.Icon options that can be set to use custom icons for drawing markers
@@ -111,7 +111,7 @@
        */
       markerIconOptions: {
         type: Object,
-        value function() {
+        value: function() {
           return {};
         }
       }
@@ -169,7 +169,7 @@
 
           var SVGURL = "data:image/svg+xml;base64," + btoa(SVG);
 
-          iconOptions = options.markerIconOptions;
+          const iconOptions = options.markerIconOptions;
 
           if (!iconOptions.iconUrl) {
             iconOptions.iconUrl = SVGURL;
@@ -189,7 +189,7 @@
           const featureProperties = feature.properties.style || {};
           const attributeProperties = this.getInstOptions().featureStyle;
 
-          return this._getVG(featureProperties, attributeProperties);
+          return this._getStyle(featureProperties, attributeProperties);
         }
 
       });
@@ -216,8 +216,19 @@
       return geojsonLayer;
     },
 
+    _getStyle(featureStyle, attributeStyle) {
+      return return {
+        radius: featureProperties.radius           || attributeProperties.radius      || 5,
+        color: featureProperties.color             || attributeProperties.color       || '#3E87E8', //primary-blue,
+        fillColor: featureProperties.fillColor     || attributeProperties.fillColor   || '#88BDE6', //$dv-light-blue
+        weight: featureProperties.weight           || attributeProperties.weight      || 2,
+        opacity: featureProperties.opacity         || attributeProperties.opacity     || 1,
+        fillOpacity: featureProperties.fillOpacity || attributeProperties.fillOpacity || 0.4
+      };
+    },
+
     _getSVG(featureSVG, attributeSVG) {
-      return featureSVG || attributeSVG ||'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" /></svg>';
+      return featureSVG || attributeSVG ||'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
     },
 
     _bindFeaturePopups() {
