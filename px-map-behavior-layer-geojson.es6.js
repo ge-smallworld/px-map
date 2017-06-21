@@ -67,7 +67,7 @@
        *
        * @type {Object}
        */
-      featureSVG: {
+      featureStyle: {
         type: String,
         observer: 'shouldUpdateInst'
       },
@@ -87,6 +87,33 @@
         type: Boolean,
         value: false,
         observer: 'shouldUpdateInst'
+      },
+
+      /**
+       * HTML svg tag as a string used to define default icons used to style markers
+       *
+       * This property is not dynamic and can only be set once when the map is
+       * first initialized.
+       *
+       * @type {String}
+       */
+      featuresSvg: {
+        type: String
+      }
+
+      /**
+       * Leaflet.Icon options that can be set to use custom icons for drawing markers
+       *
+       * This property is not dynamic and can only be set once when the map is
+       * first initialized.
+       *
+       * @type {Object}
+       */
+      markerIconOptions: {
+        type: Object,
+        value function() {
+          return {};
+        }
       }
     },
 
@@ -137,15 +164,18 @@
         pointToLayer: (feature, latlng) => {
           const featureSVG = feature.properties.svg || {};
           const attributeSVG = options.featureSVG;
-          const SVG = this._getSVG(feature, featureSVG, attributeSVG);
+
+          const SVG = this._getSVG(featureSVG, attributeSVG);
 
           var SVGURL = "data:image/svg+xml;base64," + btoa(SVG);
 
-          var SVGIcon = L.icon( {
-            iconUrl: SVGURL,
-            iconSize: [300, 300],
-            iconAnchor: [150, 120]
-          } );
+          iconOptions = options.markerIconOptions;
+
+          if (!iconOptions.iconUrl) {
+            iconOptions.iconUrl = SVGURL;
+          }
+
+          var SVGIcon = L.icon(iconOptions);
 
           return new L.Marker(latlng, {icon: SVGIcon});
         },
@@ -157,11 +187,13 @@
 
         style: (feature) => {
           const featureProperties = feature.properties.style || {};
+          const attributeProperties = this.getInstOptions().featureStyle;
 
-          return this._getStyle(featureProperties, styleAttributeProperties);
+          return this._getVG(featureProperties, attributeProperties);
         }
 
       });
+
       if(this.editable) {
         if (!this.parentNode.elementInst.editTools) {
           this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
@@ -184,19 +216,8 @@
       return geojsonLayer;
     },
 
-    _getSVG(featureProperties, attributeProperties) {
-      // return {
-      //   radius: featureProperties.radius           || attributeProperties.radius      || 5,
-      //   color: featureProperties.color             || attributeProperties.color       || '#3E87E8', //primary-blue,
-      //   fillColor: featureProperties.fillColor     || attributeProperties.fillColor   || '#88BDE6', //$dv-light-blue
-      //   weight: featureProperties.weight           || attributeProperties.weight      || 2,
-      //   opacity: featureProperties.opacity         || attributeProperties.opacity     || 1,
-      //   fillOpacity: featureProperties.fillOpacity || attributeProperties.fillOpacity || 0.4
-      // };
-
-      return '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="300" width="200"><polygon points="100,10, 40,198, 190,78 10,78, 160,198," style="fill:lime;stroke-opacity:1;stroke:purple;stroke-width:5;fill-rule:evenodd;" /></svg>';
-      //featureProperties || attributeProperties ||
-
+    _getSVG(featureSVG, attributeSVG) {
+      return featureSVG || attributeSVG ||'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" /></svg>';
     },
 
     _bindFeaturePopups() {
@@ -270,6 +291,8 @@
         dataHash: JSON.stringify(this.data || {}),
         featureStyle: this.featureStyle || {},
         featureStyleHash: JSON.stringify(this.featureStyle || {}),
+        featureSVG: this.featureSvg || {},
+        markerIconOptions: this.markerIconOptions || {},
         showFeatureProperties: this.showFeatureProperties
       };
     },
