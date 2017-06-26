@@ -90,16 +90,27 @@
       },
 
       /**
-       * Leaflet.Icon options that can be set to use custom icons for drawing markers
+       * Leaflet.Icon options that can be set to use custom icons for drawing markers.
+       * The following options are available:
        *
+       * - {Boolean} `divIcon`: [default=false] Set to use L.divIcon instead of L.Icon.
+       * - {String} `iconUrl`: [default=null] The URL to the icon image (absolute or relative to your script path). Ignored if divIcon is set to 'true'.
+       * - {String} `iconRetinaUrl`: [default=null] The URL to a retina sized version of the icon image (absolute or relative to your script path). Used for Retina screen devices. Ignored if divIcon is set to 'true'.
+       * - {Array} `iconSize`: [default=[16,16]] 	Size of the icon image in pixels.
+       * - {Array} `iconAnchor`: [default=[8,8]] The coordinates of the "tip" of the icon (relative to its top left corner). The icon will be aligned so that this point is at the marker's geographical location. Centered by default if size is specified, also can be set in CSS with negative margins.
+       * - {Array} `popupAnchor`: [default=null] The coordinates of the point from which popups will "open", relative to the icon anchor.
+       * - {String} `shadowUrl`: [default=null] The URL to the icon shadow image. If not specified, no shadow image will be created. Ignored if divIcon is set to 'true'.
+       * - {String} `shadowRetinaUrl`: [default=null] Ignored if divIcon is set to 'true'.
+       * - {Array} `shadowSize`: [default=null] Size of the shadow image in pixels. Ignored if divIcon is set to 'true'.
+       * - {Array} `shadowAnchor`: [default=null] The coordinates of the "tip" of the shadow (relative to its top left corner) (the same as iconAnchor if not specified). Ignored if divIcon is set to 'true'.
+       * - {String} `className`: [default=''] A custom class name to assign to both icon and shadow images. Empty by default.
+       * - {String} `html`: [default=''] Custom HTML code to put inside the div element, empty by default. Ignored if divIcon is set to 'false'.
+       * - {Array} `bgos`: [default=[0,0]] Optional relative position of the background, in pixels. Ignored if divIcon is set to 'false'.
        *
        * @type {Object}
        */
       markerIconOptions: {
         type: Object,
-        value: function() {
-          return {};
-        },
         observer: 'shouldUpdateInst'
       },
       /**
@@ -166,9 +177,15 @@
           const iconOptions = options.markerIconOptions;
           iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
           iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
-          iconOptions.iconUrl = options.markerIconOptions.iconSize || defaultMarkerIconURL;
 
-          const markerIcon = L.icon(iconOptions);
+          let markerIcon
+
+          if (iconOptions.divIcon) {
+            markerIcon = L.divIcon(iconOptions)
+          } else {
+            iconOptions.iconUrl = options.markerIconOptions.iconSize || defaultMarkerIconURL;
+            markerIcon = L.icon(iconOptions);
+          }
 
           return new L.Marker(latlng, {icon: markerIcon});
         },
