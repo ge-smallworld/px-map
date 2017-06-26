@@ -107,6 +107,14 @@
        * - {String} `html`: [default=''] Custom HTML code to put inside the div element, empty by default. Ignored if divIcon is set to 'false'.
        * - {Array} `bgos`: [default=[0,0]] Optional relative position of the background, in pixels. Ignored if divIcon is set to 'false'.
        *
+       * When passing a SVG object to a divIcon, the following options are also available
+       *
+       * - {String} `stroke`: [default='none'] Stroke color
+       * - {String} `fillColor`: [default='black'] Fill color.
+       * - {Number} `weight`: [default=1] Stroke width in pixels.
+       * - {Number} `opacity`: [default=1] Stroke opacity.
+       * - {Number} `fillOpacity`: [default=1] Fill opacity.
+       *
        * @type {Object}
        */
       markerIconOptions: {
@@ -181,9 +189,16 @@
           let markerIcon
 
           if (iconOptions.divIcon) {
-            markerIcon = L.divIcon(iconOptions)
+            iconOptions.html = iconOptions.html || defaultMarkerIcon;
+            markerIcon = L.divIcon(iconOptions);
+            const SVG = markerIcon._icon.querySelector('object').contentDocument.querySelector('svg');
+            SVG.setAttribute('stroke',iconOptions.stroke);
+            SVG.setAttribute('fill',iconOptions.fillColor);
+            SVG.setAttribute('stroke-width',iconOptions.weight);
+            SVG.setAttribute('opacity',iconOptions.opacity);
+            SVG.setAttribute('fill-opacity',iconOptions.fillOpacity);
           } else {
-            iconOptions.iconUrl = options.markerIconOptions.iconSize || defaultMarkerIconURL;
+            iconOptions.iconUrl = iconOptions.iconSize || defaultMarkerIconURL;
             markerIcon = L.icon(iconOptions);
           }
 
