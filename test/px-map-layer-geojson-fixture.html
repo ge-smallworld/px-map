@@ -30,7 +30,7 @@
     <test-fixture id="GeoJSONLayerFixture">
       <template>
         <px-map style="width:200px; height:200px;">
-          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "Point","coordinates": [0.11278152465820314,52.23526420307733]}}]}'
+          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "LineString","coordinates": [[0.11278152465820314,52.23526420307733],[0,0]]}}]}'
               feature-style='{"color": "green"}'
               show-feature-properties>
           </px-map-layer-geojson>
@@ -49,7 +49,7 @@
     <test-fixture id="GeoJSONLayerFixtureOnlyData">
       <template>
         <px-map style="width:200px; height:200px;" lat="52.23526420307733" lng="0.11278152465820314" zoom="2">
-          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "Point","coordinates": [0.11278152465820314,52.23526420307733]}}]}'></px-map-layer-geojson>
+          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "LineString","coordinates": [[0.11278152465820314,52.23526420307733],[0,0]]}}]}'></px-map-layer-geojson>
         </px-map>
       </template>
     </test-fixture>
@@ -57,7 +57,7 @@
     <test-fixture id="GeoJSONLayerFixtureFeatureStyles">
       <template>
         <px-map style="width:200px; height:200px;">
-          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {"style": {"color": "#ff0000"}},"geometry": {"type": "Point","coordinates": [0.11278152465820314,52.23526420307733]}}]}'></px-map-layer-geojson>
+          <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {"style": {"color": "#ff0000"}},"geometry": {"type": "LineString","coordinates": [[0.11278152465820314,52.23526420307733],[0,0]]}}]}'></px-map-layer-geojson>
         </px-map>
       </template>
     </test-fixture>

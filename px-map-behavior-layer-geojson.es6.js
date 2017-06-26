@@ -68,7 +68,7 @@
        * @type {Object}
        */
       featureStyle: {
-        type: String,
+        type: Object,
         observer: 'shouldUpdateInst'
       },
 
@@ -90,22 +90,8 @@
       },
 
       /**
-       * HTML svg tag as a string used to define default icons used to style markers
-       *
-       * This property is not dynamic and can only be set once when the map is
-       * first initialized.
-       *
-       * @type {String}
-       */
-      featuresSvg: {
-        type: String
-      },
-
-      /**
        * Leaflet.Icon options that can be set to use custom icons for drawing markers
        *
-       * This property is not dynamic and can only be set once when the map is
-       * first initialized.
        *
        * @type {Object}
        */
@@ -113,7 +99,21 @@
         type: Object,
         value: function() {
           return {};
-        }
+        },
+        observer: 'shouldUpdateInst'
+      },
+      /**
+       * Set this to specify this layer as the layer where drawn features will be stored.
+       * The editable tag must also be set to true on this layer.
+       *
+       * This property is not dynamic and can only be set once when the map is
+       * first initialized.
+       *
+       * @type {Boolean}
+       */
+      sketch: {
+        type: Boolean,
+        value: false
       }
     },
 
@@ -158,26 +158,19 @@
     },
 
     createInst(options) {
-      const styleAttributeProperties = this.getInstOptions().featureStyle;
+      const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
+      const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
 
       const geojsonLayer = L.geoJson(options.data, {
         pointToLayer: (feature, latlng) => {
-          const featureSVG = feature.properties.svg || {};
-          const attributeSVG = options.featureSVG;
-
-          const SVG = this._getSVG(featureSVG, attributeSVG);
-
-          var SVGURL = "data:image/svg+xml;base64," + btoa(SVG);
-
           const iconOptions = options.markerIconOptions;
+          iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
+          iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
+          iconOptions.iconUrl = options.markerIconOptions.iconSize || defaultMarkerIconURL;
 
-          if (!iconOptions.iconUrl) {
-            iconOptions.iconUrl = SVGURL;
-          }
+          const markerIcon = L.icon(iconOptions);
 
-          var SVGIcon = L.icon(iconOptions);
-
-          return new L.Marker(latlng, {icon: SVGIcon});
+          return new L.Marker(latlng, {icon: markerIcon});
         },
 
         onEachFeature: (feature, layer) => {
@@ -191,33 +184,47 @@
 
           return this._getStyle(featureProperties, attributeProperties);
         }
-
       });
 
       if(this.editable) {
-        if (!this.parentNode.elementInst.editTools) {
-          this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
-        } else {
-          this.parentNode.elementInst.editTools.featuresLayer.addLayer(geojsonLayer);
+        if(!this.parentNode.elementInst.editTools) {
+          if(this.sketchLayer) {
+            this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
+          } else {
+            this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst);
+          }
+          //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
+          this.parentNode.elementInst.editTools.addEventListener('editable:drawing:start', () => {
+            this.parentNode.elementInst.doubleClickZoom.disable();
+          });
+
+          this.parentNode.elementInst.editTools.addEventListener('editable:drawing:end', () => {
+            //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
+            setTimeout(() => {
+              this.parentNode.elementInst.doubleClickZoom.enable();
+            },0);
+          });
+
+          this.parentNode.elementInst.editTools.addEventListener('editable:dragstart', () => {
+            this.parentNode.elementInst.doubleClickZoom.disable();
+          });
+
+          this.parentNode.elementInst.editTools.addEventListener('editable:dragend', () => {
+            //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
+            setTimeout(() => {
+              this.parentNode.elementInst.doubleClickZoom.enable();
+            },0);
+          });
+        } else if(this.sketchLayer) {
+          this.parentNode.elementInst.editTools.featuresLayer = geojsonLayer;
         }
-        //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
-        this.parentNode.elementInst.editTools.addEventListener('editable:drawing:start', () => {
-          this.parentNode.elementInst.doubleClickZoom.disable();
-        });
-
-        this.parentNode.elementInst.editTools.addEventListener('editable:drawing:end', () => {
-          //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
-          setTimeout(() => {
-            this.parentNode.elementInst.doubleClickZoom.enable();
-          },0);
-        });
-
       }
+
       return geojsonLayer;
     },
 
-    _getStyle(featureStyle, attributeStyle) {
-      return return {
+    _getStyle(featureProperties, attributeProperties) {
+      return {
         radius: featureProperties.radius           || attributeProperties.radius      || 5,
         color: featureProperties.color             || attributeProperties.color       || '#3E87E8', //primary-blue,
         fillColor: featureProperties.fillColor     || attributeProperties.fillColor   || '#88BDE6', //$dv-light-blue
@@ -225,10 +232,6 @@
         opacity: featureProperties.opacity         || attributeProperties.opacity     || 1,
         fillOpacity: featureProperties.fillOpacity || attributeProperties.fillOpacity || 0.4
       };
-    },
-
-    _getSVG(featureSVG, attributeSVG) {
-      return featureSVG || attributeSVG ||'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
     },
 
     _bindFeaturePopups() {
@@ -294,6 +297,24 @@
         if (nextOptions.showFeatureProperties) this._bindFeaturePopups();
         if (!nextOptions.showFeatureProperties) this._unbindFeaturePopups();
       }
+      else if (lastOptions.markerIconOptionsHash !== nextOptions.markerIconOptionsHash) {
+        this.elementInst.pointToLayer = (feature, latlng) => {
+          const iconOptions = nextOptions.markerIconOptions;
+          iconOptions.iconSize = nextOptions.markerIconOptions.iconSize || [16, 16];
+          iconOptions.iconAnchor = nextOptions.markerIconOptions.iconAnchor || [8, 8];
+          iconOptions.iconUrl = nextOptions.markerIconOptions.iconSize || defaultMarkerIconURL;
+
+          const markerIcon = L.icon(iconOptions);
+
+          return new L.Marker(latlng, {icon: markerIcon});
+        }
+
+        this.elementInst.clearLayers();
+        this.elementInst.addData(nextOptions.data);
+        if (nextOptions.showFeatureProperties) {
+          this._bindFeaturePopups();
+        }
+      }
     },
 
     getInstOptions() {
@@ -302,8 +323,9 @@
         dataHash: JSON.stringify(this.data || {}),
         featureStyle: this.featureStyle || {},
         featureStyleHash: JSON.stringify(this.featureStyle || {}),
-        featureSVG: this.featureSvg || {},
+        featureSVG: this.featureSvg,
         markerIconOptions: this.markerIconOptions || {},
+        markerIconOptionsHash: JSON.stringify(this.markerIconOptions || {}),
         showFeatureProperties: this.showFeatureProperties
       };
     },
