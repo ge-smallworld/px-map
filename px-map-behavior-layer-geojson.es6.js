@@ -184,7 +184,7 @@
             iconOptions.html = iconOptions.html || defaultMarkerIcon;
             markerIcon = L.divIcon(iconOptions);
           } else {
-            iconOptions.iconUrl = iconOptions.iconSize || defaultMarkerIconURL;
+            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
             markerIcon = L.icon(iconOptions);
           }
 
@@ -206,7 +206,7 @@
 
       if(this.editable) {
         if(!this.parentNode.elementInst.editTools) {
-          if(this.sketchLayer) {
+          if(this.sketch) {
             this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
           } else {
             this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst);
@@ -233,7 +233,7 @@
               this.parentNode.elementInst.doubleClickZoom.enable();
             },0);
           });
-        } else if(this.sketchLayer) {
+        } else if(this.sketch) {
           this.parentNode.elementInst.editTools.featuresLayer = geojsonLayer;
         }
       }
@@ -325,7 +325,7 @@
           const markerIcon = L.icon(iconOptions);
 
           return new L.Marker(latlng, {icon: markerIcon});
-        }
+        };
 
         this.elementInst.clearLayers();
         this.elementInst.addData(nextOptions.data);
