@@ -213,11 +213,7 @@
 
     _addEditableTools(leafletMap) {
       if(!leafletMap.editTools) {
-        if(this.sketch) {
-          leafletMap.editTools = new L.Editable(leafletMap, {featuresLayer: geojsonLayer});
-        } else {
-          leafletMap.editTools = new L.Editable(leafletMap);
-        }
+        leafletMap.editTools = new L.Editable(leafletMap);
         //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
         leafletMap.editTools.addEventListener('editable:drawing:start', () => {
           leafletMap.doubleClickZoom.disable();
@@ -240,11 +236,12 @@
             leafletMap.doubleClickZoom.enable();
           },0);
         });
-      } else {
-        if(this.sketch) {
-          leafletMap.editTools.featuresLayer = geojsonLayer;
-        }
       }
+
+      if(this.sketch) {
+        leafletMap.editTools.featuresLayer = geojsonLayer;
+      }
+
     },
 
     _getStyle(featureProperties, attributeProperties) {
