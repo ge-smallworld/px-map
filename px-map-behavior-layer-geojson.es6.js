@@ -205,13 +205,13 @@
       });
 
       if(this.editable) {
-        this._addEditableTools(this.parentNode.elementInst);
+        this._addEditableTools(this.parentNode.elementInst, geojsonLayer);
       }
 
       return geojsonLayer;
     },
 
-    _addEditableTools(leafletMap) {
+    _addEditableTools(leafletMap, geojsonLayer) {
       if(!leafletMap.editTools) {
         leafletMap.editTools = new L.Editable(leafletMap);
         //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
