@@ -205,40 +205,46 @@
       });
 
       if(this.editable) {
-        if(!this.parentNode.elementInst.editTools) {
-          if(this.sketch) {
-            this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst, {featuresLayer: geojsonLayer});
-          } else {
-            this.parentNode.elementInst.editTools = new L.Editable(this.parentNode.elementInst);
-          }
-          //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
-          this.parentNode.elementInst.editTools.addEventListener('editable:drawing:start', () => {
-            this.parentNode.elementInst.doubleClickZoom.disable();
-          });
-
-          this.parentNode.elementInst.editTools.addEventListener('editable:drawing:end', () => {
-            //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
-            setTimeout(() => {
-              this.parentNode.elementInst.doubleClickZoom.enable();
-            },0);
-          });
-
-          this.parentNode.elementInst.editTools.addEventListener('editable:dragstart', () => {
-            this.parentNode.elementInst.doubleClickZoom.disable();
-          });
-
-          this.parentNode.elementInst.editTools.addEventListener('editable:dragend', () => {
-            //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
-            setTimeout(() => {
-              this.parentNode.elementInst.doubleClickZoom.enable();
-            },0);
-          });
-        } else if(this.sketch) {
-          this.parentNode.elementInst.editTools.featuresLayer = geojsonLayer;
-        }
+        this._addEditableTools(this.parentNode.elementInst);
       }
 
       return geojsonLayer;
+    },
+
+    _addEditableTools(leafletMap) {
+      if(!leafletMap.editTools) {
+        if(this.sketch) {
+          leafletMap.editTools = new L.Editable(leafletMap, {featuresLayer: geojsonLayer});
+        } else {
+          leafletMap.editTools = new L.Editable(leafletMap);
+        }
+        //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
+        leafletMap.editTools.addEventListener('editable:drawing:start', () => {
+          leafletMap.doubleClickZoom.disable();
+        });
+
+        leafletMap.editTools.addEventListener('editable:drawing:end', () => {
+          //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
+          setTimeout(() => {
+            leafletMap.doubleClickZoom.enable();
+          },0);
+        });
+
+        leafletMap.editTools.addEventListener('editable:dragstart', () => {
+          leafletMap.doubleClickZoom.disable();
+        });
+
+        leafletMap.editTools.addEventListener('editable:dragend', () => {
+          //0ms timeout to ensure that double clicking doesn't zoom when placing vertex and immeditaley finishing drawing
+          setTimeout(() => {
+            leafletMap.doubleClickZoom.enable();
+          },0);
+        });
+      } else {
+        if(this.sketch) {
+          leafletMap.editTools.featuresLayer = geojsonLayer;
+        }
+      }
     },
 
     _getStyle(featureProperties, attributeProperties) {
