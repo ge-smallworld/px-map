@@ -42,7 +42,7 @@ function runCustomTests() {
 
       setTimeout(function(){
         pxMap.eachLayer(function(layer) {
-          if (layer instanceof L.CircleMarker) {
+          if (layer instanceof L.Polyline) {
             layers++;
           }
         });
@@ -63,7 +63,7 @@ function runCustomTests() {
     });
 
     it('adds data to the map through attributes (via `data=`)', function(done) {
-      var dataObject = {"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "Point","coordinates": [0.11278152465820314,52.23526420307733]}}]};
+      var dataObject = {"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "LineString","coordinates": [[0.11278152465820314,52.23526420307733],[0,0]]}}]};
 
       setTimeout(function(){
         var geoJSONLayer = geoJSONLayerFixture.querySelector('px-map-layer-geojson');
@@ -148,7 +148,7 @@ function runCustomTests() {
     });
 
     it('styles features correctly through attributes (via `feature-style=`)', function(done) {
-      var featureStyles = {'color': 'green'};
+      var featureStyles = {color: 'green'};
 
       setTimeout(function(){
         var geoJSONLayer = geoJSONLayerFixture.querySelector('px-map-layer-geojson');
@@ -249,13 +249,13 @@ function runCustomTests() {
       }, 10);
     });
 
-    it('creates a circle marker from Point features', function(done) {
+    it('creates a marker from Point features', function(done) {
       setTimeout(function() {
         var geoJSONLayer = withPopupFixture.querySelector('px-map-layer-geojson');
         var geoJSONLayerInstance = geoJSONLayer.elementInst;
         var drawnLayer = geoJSONLayerInstance.getLayers()[0];
 
-        expect(drawnLayer).to.be.an.instanceof(L.CircleMarker);
+        expect(drawnLayer).to.be.an.instanceof(L.Marker);
         done();
       }, 10);
     });
