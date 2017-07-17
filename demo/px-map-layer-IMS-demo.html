@@ -47,7 +47,8 @@
         <px-map zoom="12" flex-to-size disable-touch-zoom lat="52.2352" lng="0.1127">
           <px-map-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"></px-map-tile-layer>
           <px-map-layer-IMS
-              layerName="{{props.layerName.value}}"
+              layer-name="{{props.layerName.value}}"
+              demo=true
               feature-style="{{props.featureStyle.value}}"
               show-feature-properties="{{props.showFeatureProperties.value}}">
           </px-map-layer-IMS>
@@ -146,7 +147,8 @@
       demoProps: {
         layerName: {
           type: String,
-          defaultValue: 'testData'
+          defaultValue: 'testData',
+          inputType: 'text'
         },
 
         featureStyle:{

@@ -1,14 +1,5 @@
 <!-- Extends the following behaviors -->
 <link rel="import" href="px-map-behavior-layer.html" />
 <link rel="import" href="px-map-behavior-popup.html" />
-<link rel="import" href="bower_components/iron-ajax/iron-ajax.html">
-
-<iron-ajax
-  id="get-collection"
-  url=[[url]]
-  content-type="application/json"
-  on-response="_displayData"
-  on-error="_getCollectionError">
-</iron-ajax>
 
 <link rel="import" href="px-map-bundle-loader.html" />

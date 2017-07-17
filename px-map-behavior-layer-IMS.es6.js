@@ -33,6 +33,11 @@
         type: String
       },
 
+      demo: {
+        type: Boolean,
+        value: false
+      },
+
       /**
        * Set to enable Leaflet.Editable
        *
@@ -153,20 +158,29 @@
     },
 
     createInst(options) {
-      //make request to IMS to get collection
+      //We need these options for the callback of the ajax request later
+      this.instOptions = options;
+
+      //Make request to IMS to get collection
       this.url = `/v1/collections/${options.layerName}`;
-      this.querySelector('#get-collection').generateRequest();
+      if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+
+      document.querySelector('#get-collection').generateRequest();
+
+      //Return blank geoJson layer for now, we need to wait for async responce to display actual data
+      return L.geoJson();
     },
 
     _displayData(eventContext) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+      const options = this.instOptions;
 
       const IMSLayer = L.geoJson(eventContext.detail.response, {
         pointToLayer: (feature, latlng) => {
-          const iconOptions = this.markerIconOptions;
-          iconOptions.iconSize = this.markerIconOptions.iconSize || [16, 16];
-          iconOptions.iconAnchor = this.markerIconOptions.iconAnchor || [8, 8];
+          const iconOptions = options.markerIconOptions;
+          iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
+          iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
 
           let markerIcon;
 
@@ -182,7 +196,7 @@
         },
 
         onEachFeature: (feature, layer) => {
-          if (!this.showFeatureProperties) return;
+          if (!options.showFeatureProperties) return;
           this._bindPopup(feature, layer);
         },
 
@@ -198,8 +212,13 @@
         this._addEditableTools(this.parentNode.elementInst, IMSLayer);
       }
 
-      return IMSLayer;
+      //Force an instance update to show the newly created layer
+      this.newLayer = IMSLayer;
+      this.updateInst(this, this, true);
+    },
 
+    _getCollectionError(event) {
+      console.error(event.detail.error);
     },
 
     _addEditableTools(leafletMap, IMSLayer) {
@@ -284,23 +303,31 @@
 
     /*
      * Update the instance if the new data is not the same as the old OR if the
-     * new style is not the same as the old. (Stringifying is needed here to be
-     * able to do a deep equality check).
+     * new style is not the same as the old.
      */
-    updateInst(lastOptions, nextOptions) {
-      if (!Object.keys(nextOptions.data).length) {
+    updateInst(lastOptions, nextOptions, force) {
+      if (nextOptions.layerName.length < 0) {
         this.elementInst.clearLayers();
       }
-      else if (Object.keys(nextOptions.data).length && (lastOptions.dataHash !== nextOptions.dataHash || lastOptions.featureStyleHash !== nextOptions.featureStyleHash)) {
+      else if (nextOptions.layerName.length > 0 && (lastOptions.layerName !== nextOptions.layerName || lastOptions.featureStyleHash !== nextOptions.featureStyleHash) || force) {
         const styleAttributeProperties = this.getInstOptions().featureStyle;
 
         this.elementInst.clearLayers();
+
         this.elementInst.options.style = (feature) => {
           const featureProperties = feature.properties.style || {};
           return this._getStyle(featureProperties, styleAttributeProperties);
         };
 
-        this.elementInst.addData(nextOptions.data);
+        //Either trigger an update or redraw from the newly created layer
+        if(!nextOptions.newLayer) {
+          this.url = `/v1/collections/${nextOptions.layerName}`;
+          if(nextOptions.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+          document.querySelector('#get-collection').generateRequest();
+        } else {
+          this.elementInst.addData(nextOptions.newLayer.toGeoJSON());
+        }
+
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
@@ -322,17 +349,20 @@
         };
 
         this.elementInst.clearLayers();
-        this.elementInst.addData(nextOptions.data);
+        this.elementInst.addData(nextOptions.newLayer.toGeoJSON());
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
       }
     },
 
+  /*
+   * Stringifying is needed here to be able to do a deep equality check.
+   */
     getInstOptions() {
       return {
-        data: this.data || {},
-        dataHash: JSON.stringify(this.data || {}),
+        layerName: this.layerName || {},
+        demo: this.demo,
         featureStyle: this.featureStyle || {},
         featureStyleHash: JSON.stringify(this.featureStyle || {}),
         featureSVG: this.featureSvg,

@@ -9,18 +9,15 @@
 <link rel="import" href="px-map-behavior-layer-IMS.html">
 
 <!--
-This subcomponent draws GeoJSON features as vectors on the map. Use it to draw
-common shapes like points, lines, polygons, circles, and rectangles (see the
-`data` attribute documentation for more info on what can be drawn).
-The layer only accepts valid GeoJSON formatted data — sending in invalid data
-that does not conform to the [GeoJSON spec](http://geojson.org/geojson-spec.html)
-will cause the layer to fail and not draw.
+This subcomponent retreives a collection from IMS and displays its GeoJson features as vectors on the map.
+The layer-name is used to access the IMS collection and your middileware MUST already be using the sw-service-utils node
+module (otherwise the layer won't be able to contact your IMS instance).
 
 ### Usage
 
     <px-map>
-      <px-map-layer-geojson data='{"type": "FeatureCollection", "features": [{"type": "Feature","properties": {},"geometry": {"type": "Point","coordinates": [0.11278152465820314,52.23526420307733]}}]}'>
-    </px-map-layer-geojson>
+      <px-map-layer-IMS layer-name="//your IMS collection name here//"'>
+      </px-map-layer-IMS>
     </px-map>
 
 #### Styling features
@@ -38,7 +35,7 @@ when the user taps on a feature. This is a useful way to show relevant informati
 about each feature.
 
 @element px-map-layer-IMS
-@blurb Draws GeoJSON features as vectors on a map
+@blurb Draws IMS collection on a map
 @homepage index.html
 @demo index.html
 -->
@@ -47,7 +44,15 @@ about each feature.
   <style>
     :host { display: none }
   </style>
-  <template></template>
+  <template>
+    <iron-ajax
+      id="get-collection"
+      url=[[url]]
+      content-type="application/json"
+      on-response="_displayData"
+      on-error="_getCollectionError">
+    </iron-ajax>
+  </template>
 </dom-module>
 <script>
   Polymer({
