@@ -33,6 +33,10 @@
         type: String
       },
 
+      pane: {
+        type: String
+      },
+
       demo: {
         type: Boolean,
         value: false
@@ -160,6 +164,8 @@
     createInst(options) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+      this.parentNode.elementInst.createPane(options.pane || options.layerName);
+      const initialBounds = this.parentNode.elementInst.getBounds();
 
       const IMSLayer = L.geoJson(null, {
         pointToLayer: (feature, latlng) => {
@@ -190,7 +196,9 @@
           const attributeProperties = this.getInstOptions().featureStyle;
 
           return this._getStyle(featureProperties, attributeProperties);
-        }
+        },
+
+        pane: options.pane || options.layerName
       });
 
       if(this.editable) {
@@ -198,7 +206,8 @@
       }
 
       //Make request to IMS to get collection
-      this.url = `/v1/collections/${options.layerName}`;
+      this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
+        `left=${initialBounds._southWest.lng}&right=${initialBounds._northEast.lng}&top=${initialBounds._northEast.lat}&bottom=${initialBounds._southWest.lat}`;
       if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
       this.querySelector('#get-collection').generateRequest();
 
@@ -206,8 +215,12 @@
     },
 
     _displayData(eventContext) {
+      const collectionName = eventContext.detail.url.split('/v1/collections/')[1];
+
       //Now that we have the data, add it to the instance
+      this.elementInst.clearLayers();
       this.elementInst.addData(eventContext.detail.response);
+      this.fire('IMS-layer-ready', collectionName);
     },
 
     _getCollectionError(event) {
@@ -313,8 +326,10 @@
         };
 
         //Request the new IMS collection
-        this.url = `/v1/collections/${nextOptions.layerName}`;
-        if(nextOptions.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+        const currentBounds = this.parentNode.elementInst.getBounds();
+        this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
+          `left=${currentBounds._southWest.lng}&right=${currentBounds._northEast.lng}&top=${currentBounds._northEast.lat}&bottom=${currentBounds._southWest.lat}`;
+        if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
         this.querySelector('#get-collection').generateRequest();
 
         if (nextOptions.showFeatureProperties) {
@@ -351,6 +366,7 @@
     getInstOptions() {
       return {
         layerName: this.layerName || {},
+        pane: this.pane || null,
         demo: this.demo,
         featureStyle: this.featureStyle || {},
         featureStyleHash: JSON.stringify(this.featureStyle || {}),
@@ -359,6 +375,16 @@
         markerIconOptionsHash: JSON.stringify(this.markerIconOptions || {}),
         showFeatureProperties: this.showFeatureProperties
       };
+    },
+
+    setNewBounds(boundsArray) {
+      //Ensure it is a valid numeric array first
+      if(boundsArray && boundsArray.length === 4 && !boundsArray.some(isNaN)){
+        this.url = `/v1/collections/${this.layerName}/spatial-query/bbox-interacts?`+
+          `left=${boundsArray[0]}&right=${boundsArray[1]}&top=${boundsArray[2]}&bottom=${boundsArray[3]}`;
+        if(this.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+        this.querySelector('#get-collection').generateRequest();
+      }
     },
 
     _handleFeatureAdded(evt) {

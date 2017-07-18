@@ -30,13 +30,23 @@
     <test-fixture id="IMSLayerFixture">
       <template>
         <px-map style="width:200px; height:200px;">
-          <px-map-layer-IMS layer-name='testData'
+          <px-map-layer-IMS
+              layer-name='testData'
               show-feature-properties>
           </px-map-layer-IMS>
         </px-map>
       </template>
     </test-fixture>
 
+    <test-fixture id="noLayerNameFixture">
+      <template>
+        <px-map style="width:200px; height:200px;">
+          <px-map-layer-IMS
+            show-feature-properties>
+          </px-map-layer-IMS>
+        </px-map>
+      </template>
+    </test-fixture>
 
   </body>
 </html>

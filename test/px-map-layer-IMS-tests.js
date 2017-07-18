@@ -6,10 +6,12 @@ function runCustomTests() {
 
   describe('px-map-layer-geojson', function () {
     var IMSLayerFixture;
+    var noLayerNameFixture;
     var sandbox;
 
     beforeEach(function () {
       IMSLayerFixture = fixture('IMSLayerFixture');
+      noLayerNameFixture = fixture('noLayerNameFixture');
       sandbox = sinon.sandbox.create();
     });
 
@@ -27,18 +29,13 @@ function runCustomTests() {
     });
 
     it('adds itself as a layer to the px-map', function(done) {
-      var layerInstance = IMSLayerFixture.elementInst;
-      var layers = 0;
-
       setTimeout(function(){
-        layerInstance.eachLayer(function(layer) {
-          if (layer instanceof L.Polyline) {
-            layers++;
-          }
-        });
+        var layerInstance = IMSLayerFixture.querySelector('px-map-layer-IMS').elementInst;
+        console.log(IMSLayerFixture.elementInst);
+        console.log(layerInstance);
 
         expect(layerInstance).to.exist;
-        expect(layers).to.eql(1);
+        expect(IMSLayerFixture.elementInst.hasLayer(layerInstance)).to.be.true;
         done();
       }, 10);
     });
@@ -47,7 +44,16 @@ function runCustomTests() {
       setTimeout(function() {
         var layerInstance = noLayerNameFixture.querySelector('px-map-layer-IMS').elementInst;
 
-        expect(geoJSONLayerInstance).to.be.null;
+        expect(layerInstance).to.be.null;
+        done();
+      }, 10);
+    });
+
+    it('can store the bounding box of the layer internally', function(done) {
+      setTimeout(function() {
+        var layerInstance = IMSLayerFixture.querySelector('px-map-layer-IMS').elementInst;
+        layerInstance.setNewBounds([1,0,1,0]);
+
         done();
       }, 10);
     });
