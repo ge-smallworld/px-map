@@ -211,11 +211,24 @@
       if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
       this.querySelector('#get-collection').generateRequest();
 
+      //Bind to px-maps moveend to re-request the data with new bounds
+      this.parentNode.elementInst.on({
+        moveend: () => {
+          const bounds = this.parentNode.elementInst.getBounds();
+          const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
+
+          this.setNewBounds(boundsArray);
+        }
+      });
+
       return IMSLayer;
     },
 
     _displayData(eventContext) {
-      const collectionName = eventContext.detail.url.split('/v1/collections/')[1];
+      let collectionName = eventContext.detail.url.split('/v1/collections/')[1];
+      if(this.demo) {
+        collectionName = 'demo';
+      }
 
       //Now that we have the data, add it to the instance
       this.elementInst.clearLayers();
@@ -224,7 +237,10 @@
     },
 
     _getCollectionError(event) {
-      console.error(event.detail.error);
+      //If we are aborting the request, don't show an error
+      if(!event.detail.error.message === "Request aborted.") {
+        console.error(event.detail.error);
+      }
     },
 
     _addEditableTools(leafletMap, IMSLayer) {
@@ -312,6 +328,9 @@
      * new style is not the same as the old.
      */
     updateInst(lastOptions, nextOptions, force) {
+      const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
+      const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+
       if (nextOptions.layerName.length < 0) {
         this.elementInst.clearLayers();
       }
@@ -383,7 +402,13 @@
         this.url = `/v1/collections/${this.layerName}/spatial-query/bbox-interacts?`+
           `left=${boundsArray[0]}&right=${boundsArray[1]}&top=${boundsArray[2]}&bottom=${boundsArray[3]}`;
         if(this.demo) this.url = 'demo/px-map-layer-geojson-data.json';
-        this.querySelector('#get-collection').generateRequest();
+
+        //Cancel existing request (if there is one) and generate a new one.
+        const ironAjax = this.querySelector('#get-collection');
+        if (ironAjax.lastRequest) {
+          ironAjax.lastRequest.abort();
+        }
+        ironAjax.generateRequest();
       }
     },
 
