@@ -239,7 +239,6 @@
     _getCollectionError(event) {
       //If we are aborting the request, don't show an error
       if(event.detail.error.message !== "Request aborted.") {
-        console.error(event.detail.error);
         this.fire('IMS-layer-error', event.detail.error);
       }
     },
@@ -328,7 +327,7 @@
      * Update the instance if the new data is not the same as the old OR if the
      * new style is not the same as the old.
      */
-    updateInst(lastOptions, nextOptions, force) {
+    updateInst(lastOptions, nextOptions) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
 
@@ -347,9 +346,9 @@
 
         //Request the new IMS collection
         const currentBounds = this.parentNode.elementInst.getBounds();
-        this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
+        this.url = `/v1/collections/${nextOptions.layerName}/spatial-query/bbox-interacts?`+
           `left=${currentBounds._southWest.lng}&right=${currentBounds._northEast.lng}&top=${currentBounds._northEast.lat}&bottom=${currentBounds._southWest.lat}`;
-        if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+        if(nextOptions.demo) this.url = 'demo/px-map-layer-geojson-data.json';
         this.querySelector('#get-collection').generateRequest();
 
         if (nextOptions.showFeatureProperties) {
@@ -399,7 +398,13 @@
 
     setNewBounds(boundsArray) {
       //Ensure it is a valid numeric array first
-      if(boundsArray && boundsArray.length === 4 && !boundsArray.some(isNaN)){
+      if(boundsArray && boundsArray.length === 4 && !boundsArray.some(isNaN)) {
+
+        boundsArray[0] < -90 ? boundsArray[0] = -90 : null;
+        boundsArray[1] > 90 ? boundsArray[1] = 90 : null;
+        boundsArray[2] > 180 ? boundsArray[2] = 180 : null;
+        boundsArray[3] < -180 ? boundsArray[3] = -180 : null;
+
         this.url = `/v1/collections/${this.layerName}/spatial-query/bbox-interacts?`+
           `left=${boundsArray[0]}&right=${boundsArray[1]}&top=${boundsArray[2]}&bottom=${boundsArray[3]}`;
         if(this.demo) this.url = 'demo/px-map-layer-geojson-data.json';

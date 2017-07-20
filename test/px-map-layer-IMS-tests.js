@@ -77,7 +77,7 @@ function runCustomTests() {
         expect(IMSLayerOptions).to.have.property('featureStyle').that.eql(featureStyles);
         expect(drawnLayer.options).to.have.property('color').that.eql('green');
         done();
-      });
+      }, {once: true});
     });
 
     it('updates feature styles when they are changed', function(done) {
@@ -87,15 +87,17 @@ function runCustomTests() {
         var IMSLayer = styledIMSLayerFixture.querySelector('px-map-layer-IMS');
         var IMSLayerInstance = IMSLayer.elementInst;
         IMSLayer.set('featureStyle', newStyles);
-        var IMSLayerOptions = IMSLayer.getInstOptions();
-        var drawnLayer = IMSLayerInstance.getLayers()[0];
 
-        console.log(drawnLayer.options);
+        //Wait for layer re-render
+        setTimeout(function() {
+          var IMSLayerOptions = IMSLayer.getInstOptions();
+          var drawnLayer = IMSLayerInstance.getLayers()[0];
 
-        expect(IMSLayerOptions).to.have.property('featureStyle').that.eql(newStyles);
-        expect(drawnLayer.options).to.have.property('color').that.eql('orange');
-        done();
-      });
+          expect(IMSLayerOptions).to.have.property('featureStyle').that.eql(newStyles);
+          expect(drawnLayer.options).to.have.property('color').that.eql('orange');
+          done();
+        }, 10);
+      }, {once: true});
     });
 
   });
