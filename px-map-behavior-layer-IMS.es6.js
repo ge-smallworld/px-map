@@ -238,8 +238,9 @@
 
     _getCollectionError(event) {
       //If we are aborting the request, don't show an error
-      if(!event.detail.error.message === "Request aborted.") {
+      if(event.detail.error.message !== "Request aborted.") {
         console.error(event.detail.error);
+        this.fire('IMS-layer-error', event.detail.error);
       }
     },
 
