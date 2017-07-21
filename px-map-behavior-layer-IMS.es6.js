@@ -33,10 +33,20 @@
         type: String
       },
 
+      /**
+       * The name of the custom pane to use to render this layer on.
+       *
+       * @type {String}
+       */
       pane: {
         type: String
       },
 
+      /**
+       * A switch to use certain settings for when the layer is being use on the demo page.
+       *
+       * @type {String}
+       */
       demo: {
         type: Boolean,
         value: false
@@ -51,6 +61,7 @@
         type: Boolean,
         value: false
       },
+
       /**
        * An object with settings that will be used to style each feature when
        * it is added to the map. The following options are available:
@@ -120,6 +131,7 @@
         type: Object,
         observer: 'shouldUpdateInst'
       },
+
       /**
        * Set this to specify this layer as the layer where drawn features will be stored.
        * The editable tag must also be set to true on this layer.
@@ -164,7 +176,11 @@
     createInst(options) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+
+      //Create a custom pane to draw onto so that we can control the draw order.
       this.parentNode.elementInst.createPane(options.pane || options.layerName);
+
+      //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
 
       const IMSLayer = L.geoJson(null, {
