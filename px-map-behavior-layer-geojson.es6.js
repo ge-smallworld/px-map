@@ -188,6 +188,9 @@
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const geoJsonPaneName = options.pane.name || 'overlayPane';
+      this.parentNode.elementInst.createPane(geoJsonPaneName);
+      this.parentNode.elementInst.getPane(geoJsonPaneName).classList.add('custom-pane');
+      this.parentNode.elementInst.getPane(geoJsonPaneName).style.zIndex = options.pane.zIndex;
 
       const geojsonLayer = L.geoJson(options.data, {
         pointToLayer: (feature, latlng) => {
