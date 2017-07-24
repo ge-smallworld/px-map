@@ -397,8 +397,9 @@
           return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
         };
 
+        const currentData = this.elementInst.toGeoJSON();
         this.elementInst.clearLayers();
-        this.elementInst.addData(nextOptions.newLayer.toGeoJSON());
+        this.elementInst.addData(currentData);
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
