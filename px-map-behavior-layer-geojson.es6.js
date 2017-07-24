@@ -44,6 +44,22 @@
         type: Boolean,
         value: false
       },
+
+      /**
+       * The object containing the name and z-index of the custom pane to use to render this layer on.
+       *
+       * The name property is not dynamic and can only be set once when the map is
+       * first initialized.
+       *
+       * - {String} `name`: [default=null] Name of the custom pane
+       * - {Number} `zIndex`: [default=400] z-index of the custom pane
+       *
+       * @type {Object}
+       */
+      pane: {
+        type: Object
+      },
+
       /**
        * An object with settings that will be used to style each feature when
        * it is added to the map. The following options are available:
@@ -171,6 +187,7 @@
     createInst(options) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+      const geoJsonPaneName = options.pane.name || 'overlayPane';
 
       const geojsonLayer = L.geoJson(options.data, {
         pointToLayer: (feature, latlng) => {
@@ -188,7 +205,7 @@
             markerIcon = L.icon(iconOptions);
           }
 
-          return new L.Marker(latlng, {icon: markerIcon});
+          return new L.Marker(latlng, {icon: markerIcon, pane: geoJsonPaneName});
         },
 
         onEachFeature: (feature, layer) => {
@@ -201,7 +218,9 @@
           const attributeProperties = this.getInstOptions().featureStyle;
 
           return this._getStyle(featureProperties, attributeProperties);
-        }
+        },
+
+        pane: geoJsonPaneName
       });
 
       if(this.editable) {
@@ -335,6 +354,8 @@
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
+      } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
+        this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.pane.zIndex;
       }
     },
 
