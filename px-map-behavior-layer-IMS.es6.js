@@ -403,8 +403,8 @@
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
-      } else if (lastOptions.pane.zIndex !== nextOptions.zIndex) {
-        this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.zIndex;
+      } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
+        this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.pane.zIndex;
       }
     },
 
