@@ -368,6 +368,7 @@
         featureSVG: this.featureSvg,
         markerIconOptions: this.markerIconOptions || {},
         markerIconOptionsHash: JSON.stringify(this.markerIconOptions || {}),
+        pane: this.pane || {},
         showFeatureProperties: this.showFeatureProperties
       };
     },
