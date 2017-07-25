@@ -182,12 +182,13 @@
     createInst(options) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+      const mapInst = this.parentNode.elementInst;
       const customPaneName =  options.pane.name || options.layerName;
 
       //Create a custom pane to draw onto so that we can control the draw order.
-      this.parentNode.elementInst.createPane(customPaneName);
-      this.parentNode.elementInst.getPane(customPaneName).classList.add('custom-pane');
-      this.parentNode.elementInst.getPane(customPaneName).style.zIndex = options.pane.zIndex;
+      mapInst.createPane(customPaneName);
+      mapInst.getPane(customPaneName).classList.add('custom-pane');
+      mapInst.getPane(customPaneName).style.zIndex = options.pane.zIndex;
 
       //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
@@ -227,7 +228,7 @@
       });
 
       if(this.editable) {
-        this._addEditableTools(this.parentNode.elementInst, IMSLayer);
+        this._addEditableTools(mapInst, IMSLayer);
       }
 
       //Make request to IMS to get collection
