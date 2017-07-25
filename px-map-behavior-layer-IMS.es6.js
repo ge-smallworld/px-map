@@ -34,12 +34,18 @@
       },
 
       /**
-       * The name of the custom pane to use to render this layer on.
+       * The object containing the name and z-index of the custom pane to use to render this layer on.
        *
-       * @type {String}
+       * The name property is not dynamic and can only be set once when the map is
+       * first initialized.
+       *
+       * - {String} `name`: [default=null] Name of the custom pane
+       * - {Number} `zIndex`: [default=400] z-index of the custom pane
+       *
+       * @type {Object}
        */
       pane: {
-        type: String
+        type: Object
       },
 
       /**
@@ -176,9 +182,13 @@
     createInst(options) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+      const mapInst = this.parentNode.elementInst;
+      const customPaneName =  options.pane.name || options.layerName;
 
       //Create a custom pane to draw onto so that we can control the draw order.
-      this.parentNode.elementInst.createPane(options.pane || options.layerName);
+      mapInst.createPane(customPaneName);
+      mapInst.getPane(customPaneName).classList.add('custom-pane');
+      mapInst.getPane(customPaneName).style.zIndex = options.pane.zIndex;
 
       //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
@@ -199,7 +209,7 @@
             markerIcon = L.icon(iconOptions);
           }
 
-          return new L.Marker(latlng, {icon: markerIcon});
+          return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
         },
 
         onEachFeature: (feature, layer) => {
@@ -214,11 +224,11 @@
           return this._getStyle(featureProperties, attributeProperties);
         },
 
-        pane: options.pane || options.layerName
+        pane: customPaneName
       });
 
       if(this.editable) {
-        this._addEditableTools(this.parentNode.elementInst, IMSLayer);
+        this._addEditableTools(mapInst, IMSLayer);
       }
 
       //Make request to IMS to get collection
@@ -346,6 +356,7 @@
     updateInst(lastOptions, nextOptions) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
+      const customPaneName = lastOptions.pane.name || lastOptions.layerName;
 
       if (nextOptions.layerName.length < 0) {
         this.elementInst.clearLayers();
@@ -384,14 +395,17 @@
 
           const markerIcon = L.icon(iconOptions);
 
-          return new L.Marker(latlng, {icon: markerIcon});
+          return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
         };
 
+        const currentData = this.elementInst.toGeoJSON();
         this.elementInst.clearLayers();
-        this.elementInst.addData(nextOptions.newLayer.toGeoJSON());
+        this.elementInst.addData(currentData);
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
+      } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
+        this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.pane.zIndex;
       }
     },
 
@@ -401,7 +415,7 @@
     getInstOptions() {
       return {
         layerName: this.layerName || {},
-        pane: this.pane || null,
+        pane: this.pane || {name: null, zIndex: 400},
         demo: this.demo,
         featureStyle: this.featureStyle || {},
         featureStyleHash: JSON.stringify(this.featureStyle || {}),
