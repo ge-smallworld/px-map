@@ -430,10 +430,10 @@
       //Ensure it is a valid numeric array first
       if(boundsArray && boundsArray.length === 4 && !boundsArray.some(isNaN)) {
 
-        boundsArray[0] < -90 ? boundsArray[0] = -90 : null;
-        boundsArray[1] > 90 ? boundsArray[1] = 90 : null;
-        boundsArray[2] > 180 ? boundsArray[2] = 180 : null;
-        boundsArray[3] < -180 ? boundsArray[3] = -180 : null;
+        boundsArray[0] < -180 ? boundsArray[0] = -180 : null;
+        boundsArray[1] > 180 ? boundsArray[1] = 180 : null;
+        boundsArray[2] < -90 ? boundsArray[2] = 90 : null;
+        boundsArray[3] > 90 ? boundsArray[3] = 90 : null;
 
         this.url = `/v1/collections/${this.layerName}/spatial-query/bbox-interacts?`+
           `left=${boundsArray[0]}&right=${boundsArray[1]}&top=${boundsArray[2]}&bottom=${boundsArray[3]}`;
