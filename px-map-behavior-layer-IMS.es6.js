@@ -184,6 +184,7 @@
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
       const customPaneName =  options.pane.name || options.layerName;
+      const attributeProperties = this.getInstOptions().featureStyle;
 
       //Create a custom pane to draw onto so that we can control the draw order.
       mapInst.createPane(customPaneName);
@@ -195,11 +196,11 @@
 
       const IMSLayer = L.geoJson(null, {
         pointToLayer: (feature, latlng) => {
+          let markerIcon;
           const iconOptions = options.markerIconOptions;
           iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
           iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
 
-          let markerIcon;
 
           if (iconOptions.divIcon) {
             iconOptions.html = iconOptions.html || defaultMarkerIcon;
@@ -219,7 +220,6 @@
 
         style: (feature) => {
           const featureProperties = feature.properties.style || {};
-          const attributeProperties = this.getInstOptions().featureStyle;
 
           return this._getStyle(featureProperties, attributeProperties);
         },
