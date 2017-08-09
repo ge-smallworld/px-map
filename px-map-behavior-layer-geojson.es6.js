@@ -189,17 +189,18 @@
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
       const geoJsonPaneName = options.pane.name || 'overlayPane';
+      const attributeProperties = this.getInstOptions().featureStyle;
+
       mapInst.createPane(geoJsonPaneName);
       mapInst.getPane(geoJsonPaneName).classList.add('custom-pane');
       mapInst.getPane(geoJsonPaneName).style.zIndex = options.pane.zIndex;
 
       const geojsonLayer = L.geoJson(options.data, {
         pointToLayer: (feature, latlng) => {
+          let markerIcon;
           const iconOptions = options.markerIconOptions;
           iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
           iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
-
-          let markerIcon;
 
           if (iconOptions.divIcon) {
             iconOptions.html = iconOptions.html || defaultMarkerIcon;
@@ -219,7 +220,6 @@
 
         style: (feature) => {
           const featureProperties = feature.properties.style || {};
-          const attributeProperties = this.getInstOptions().featureStyle;
 
           return this._getStyle(featureProperties, attributeProperties);
         },
