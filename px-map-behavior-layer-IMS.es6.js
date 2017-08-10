@@ -294,14 +294,13 @@
             leafletMap.doubleClickZoom.enable();
           },0);
         });
-
-        this.fire('IMS-editTools-ready');
       }
 
       if(this.sketch) {
         leafletMap.editTools.featuresLayer = IMSLayer;
       }
 
+      this.fire('IMS-editTools-ready');
     },
 
     _getStyle(featureProperties, attributeProperties) {
