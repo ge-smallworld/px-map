@@ -294,6 +294,8 @@
             leafletMap.doubleClickZoom.enable();
           },0);
         });
+
+        this.fire('IMS-editTools-ready');
       }
 
       if(this.sketch) {
