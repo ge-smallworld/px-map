@@ -265,6 +265,7 @@
         leafletMap.editTools.featuresLayer = geojsonLayer;
       }
 
+      this.fire('geojson-editTools-ready');
     },
 
     _getStyle(featureProperties, attributeProperties) {

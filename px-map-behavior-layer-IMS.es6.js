@@ -300,6 +300,7 @@
         leafletMap.editTools.featuresLayer = IMSLayer;
       }
 
+      this.fire('IMS-editTools-ready');
     },
 
     _getStyle(featureProperties, attributeProperties) {
