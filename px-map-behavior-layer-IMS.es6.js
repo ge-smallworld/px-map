@@ -69,8 +69,8 @@
       },
 
       /**
-       * A property used to determine the zoom level at which the feature becomes visibile
-       * default value is 1
+       * A property used to determine the zoom level at which features become visible
+       * default value is 1+
        *
        * @type {String}
        */
