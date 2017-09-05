@@ -69,6 +69,17 @@
       },
 
       /**
+       * A property used to determine the zoom level at which the feature becomes visibile
+       * default value is 1
+       *
+       * @type {String}
+       */
+      visibilityZoomLevels: {
+        type: String,
+        value: "1+"
+      },
+
+      /**
        * An object with settings that will be used to style each feature when
        * it is added to the map. The following options are available:
        *
@@ -240,10 +251,15 @@
       //Bind to px-maps moveend to re-request the data with new bounds
       this.parentNode.elementInst.on({
         moveend: () => {
-          const bounds = this.parentNode.elementInst.getBounds();
-          const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
+          const layerStartingZoomValue = this.visibilityZoomLevels.substring(0,this.visibilityZoomLevels.indexOf("+"));
+          if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
+            const bounds = this.parentNode.elementInst.getBounds();
+            const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
 
-          this.setNewBounds(boundsArray);
+            this.setNewBounds(boundsArray);
+          } else {
+            this.elementInst.clearLayers();
+          }
         }
       });
 
