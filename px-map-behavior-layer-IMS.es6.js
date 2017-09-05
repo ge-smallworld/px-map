@@ -78,7 +78,7 @@
         type: String,
         value: "1+"
       },
-      
+
 
       /**
        * An object with settings that will be used to style each feature when
@@ -250,6 +250,7 @@
       this.querySelector('#get-collection').generateRequest();
 
       //Bind to px-maps moveend to re-request the data with new bounds
+      //If layer is not going to be rendered at the current zoom level, don't load
       this.parentNode.elementInst.on({
         moveend: () => {
           const layerStartingZoomValue = this.visibilityZoomLevels.substring(0,this.visibilityZoomLevels.indexOf("+"));
