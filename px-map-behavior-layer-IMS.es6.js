@@ -78,6 +78,7 @@
         type: String,
         value: "1+"
       },
+      
 
       /**
        * An object with settings that will be used to style each feature when
