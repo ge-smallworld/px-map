@@ -69,6 +69,18 @@
       },
 
       /**
+       * A property used to determine the zoom level at which features become visible
+       * default value is 1+
+       *
+       * @type {String}
+       */
+      visibilityZoomLevels: {
+        type: String,
+        value: "1+"
+      },
+
+
+      /**
        * An object with settings that will be used to style each feature when
        * it is added to the map. The following options are available:
        *
@@ -238,16 +250,28 @@
       this.querySelector('#get-collection').generateRequest();
 
       //Bind to px-maps moveend to re-request the data with new bounds
+      //If layer is not going to be rendered at the current zoom level, don't load
       this.parentNode.elementInst.on({
         moveend: () => {
-          const bounds = this.parentNode.elementInst.getBounds();
-          const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
+          const layerStartingZoomValue = this._getLayerStartingZoomValue();
+          if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
+            const bounds = this.parentNode.elementInst.getBounds();
+            const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
 
-          this.setNewBounds(boundsArray);
+            this.setNewBounds(boundsArray);
+          } else {
+            this.elementInst.clearLayers();
+          }
         }
       });
 
       return IMSLayer;
+    },
+
+    _getLayerStartingZoomValue() {
+      const start = 0;
+      const end = this.visibilityZoomLevels.indexOf("+");
+      return this.visibilityZoomLevels.substring(start, end);
     },
 
     _displayData(eventContext) {
