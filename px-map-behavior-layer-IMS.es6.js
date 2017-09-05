@@ -192,6 +192,7 @@
     },
 
     createInst(options) {
+      const _this = this;
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
@@ -253,7 +254,7 @@
       //If layer is not going to be rendered at the current zoom level, don't load
       this.parentNode.elementInst.on({
         moveend: () => {
-          const layerStartingZoomValue = this.visibilityZoomLevels.substring(0,this.visibilityZoomLevels.indexOf("+"));
+          const layerStartingZoomValue = _this._getLayerStartingZoomValue();
           if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
             const bounds = this.parentNode.elementInst.getBounds();
             const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
@@ -266,6 +267,12 @@
       });
 
       return IMSLayer;
+    },
+
+    _getLayerStartingZoomValue() {
+      const start = 0;
+      const end = this.visibilityZoomLevels.indexOf("+");
+      return this.visibilityZoomLevels.substring(start, end);
     },
 
     _displayData(eventContext) {
