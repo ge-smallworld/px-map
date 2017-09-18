@@ -243,7 +243,7 @@
         this._addEditableTools(mapInst, IMSLayer);
       }
 
-      _useZoomLevelVisibilities();
+      this._useZoomLevelVisibilities();
 
       //Make request to IMS to get collection
       this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
@@ -255,7 +255,7 @@
       //If layer is not going to be rendered at the current zoom level, don't load
       this.parentNode.elementInst.on({
         moveend: () => {
-          _useZoomLevelVisibilities();
+          this._useZoomLevelVisibilities();
         }
       });
 
@@ -439,8 +439,8 @@
         this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.pane.zIndex;
       }
 
-      _useZoomLevelVisibilities();
-      
+      this._useZoomLevelVisibilities();
+
     },
 
     /*
