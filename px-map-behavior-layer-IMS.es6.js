@@ -243,13 +243,13 @@
         this._addEditableTools(mapInst, IMSLayer);
       }
 
-      this._useZoomLevelVisibilities();
-
       //Make request to IMS to get collection
       this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
         `left=${initialBounds._southWest.lng}&right=${initialBounds._northEast.lng}&top=${initialBounds._northEast.lat}&bottom=${initialBounds._southWest.lat}`;
       if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
       this.querySelector('#get-collection').generateRequest();
+
+      this._useZoomLevelVisibilities();
 
       //Bind to px-maps moveend to re-request the data with new bounds
       //If layer is not going to be rendered at the current zoom level, don't load
