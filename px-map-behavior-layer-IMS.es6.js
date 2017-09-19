@@ -243,35 +243,45 @@
         this._addEditableTools(mapInst, IMSLayer);
       }
 
-      //Make request to IMS to get collection
-      this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
-        `left=${initialBounds._southWest.lng}&right=${initialBounds._northEast.lng}&top=${initialBounds._northEast.lat}&bottom=${initialBounds._southWest.lat}`;
-      if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
-      this.querySelector('#get-collection').generateRequest();
+      if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+        this._requestCollectionsFromIMS(options, initialBounds);
+      }
 
       //Bind to px-maps moveend to re-request the data with new bounds
       //If layer is not going to be rendered at the current zoom level, don't load
       this.parentNode.elementInst.on({
         moveend: () => {
-          const layerStartingZoomValue = this._getLayerStartingZoomValue();
-          if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
-            const bounds = this.parentNode.elementInst.getBounds();
-            const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
-
-            this.setNewBounds(boundsArray);
-          } else {
-            this.elementInst.clearLayers();
-          }
+          this._checkZoomLevelVisibilities();
         }
       });
 
       return IMSLayer;
     },
 
+    //Make request to IMS to get collection
+    _requestCollectionsFromIMS(options, bounds) {
+      this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
+      `left=${bounds._southWest.lng}&right=${bounds._northEast.lng}&top=${bounds._northEast.lat}&bottom=${bounds._southWest.lat}`;
+      if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+      this.querySelector('#get-collection').generateRequest();
+    },
+
+    //Ensures that layer is visible at the current zoom level only if it should be, if not it clears it
+    _checkZoomLevelVisibilities() {
+      if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+        const bounds = this.parentNode.elementInst.getBounds();
+        const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
+        this.setNewBounds(boundsArray);
+      } else {
+        this.elementInst.clearLayers();
+      }
+    },
+
     _getLayerStartingZoomValue() {
       const start = 0;
       const end = this.visibilityZoomLevels.indexOf("+");
-      return this.visibilityZoomLevels.substring(start, end);
+      // if '+' was not given, return the value as it is
+      return end > -1 ? this.visibilityZoomLevels.substring(start, end) : this.visibilityZoomLevels;
     },
 
     _displayData(eventContext) {
@@ -398,13 +408,11 @@
 
         //Request the new IMS collection
         const currentBounds = this.parentNode.elementInst.getBounds();
-        this.url = `/v1/collections/${nextOptions.layerName}/spatial-query/bbox-interacts?`+
-          `left=${currentBounds._southWest.lng}&right=${currentBounds._northEast.lng}&top=${currentBounds._northEast.lat}&bottom=${currentBounds._southWest.lat}`;
-        if(nextOptions.demo) this.url = 'demo/px-map-layer-geojson-data.json';
-        this.querySelector('#get-collection').generateRequest();
-
-        if (nextOptions.showFeatureProperties) {
-          this._bindFeaturePopups();
+        if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+          this._requestCollectionsFromIMS(nextOptions, currentBounds);
+          if (nextOptions.showFeatureProperties) {
+            this._bindFeaturePopups();
+          }
         }
       }
       else if (lastOptions.showFeatureProperties !== nextOptions.showFeatureProperties) {
