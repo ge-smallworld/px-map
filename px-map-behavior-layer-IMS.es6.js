@@ -243,8 +243,7 @@
         this._addEditableTools(mapInst, IMSLayer);
       }
 
-      const layerStartingZoomValue = this._getLayerStartingZoomValue();
-      if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
+      if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
         this._requestCollectionsFromIMS(options, initialBounds);
       }
 
@@ -269,21 +268,20 @@
 
     //Ensures that layer is visible at the current zoom level only if it should be, if not it clears it
     _checkZoomLevelVisibilities() {
-    const layerStartingZoomValue = this._getLayerStartingZoomValue();
-    if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
-      const bounds = this.parentNode.elementInst.getBounds();
-      const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
-
-      this.setNewBounds(boundsArray);
-    } else {
-      this.elementInst.clearLayers();
-    }
-  },
+      if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+        const bounds = this.parentNode.elementInst.getBounds();
+        const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
+        this.setNewBounds(boundsArray);
+      } else {
+        this.elementInst.clearLayers();
+      }
+    },
 
     _getLayerStartingZoomValue() {
       const start = 0;
       const end = this.visibilityZoomLevels.indexOf("+");
-      return this.visibilityZoomLevels.substring(start, end);
+      // if '+' was not given, return the value as it is
+      return end > -1 ? this.visibilityZoomLevels.substring(start, end) : this.visibilityZoomLevels;
     },
 
     _displayData(eventContext) {
@@ -410,9 +408,8 @@
 
         //Request the new IMS collection
         const currentBounds = this.parentNode.elementInst.getBounds();
-        const layerStartingZoomValue = this._getLayerStartingZoomValue();
-        if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
-        this._requestCollectionsFromIMS(nextOptions, currentBounds);
+        if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+          this._requestCollectionsFromIMS(nextOptions, currentBounds);
           if (nextOptions.showFeatureProperties) {
             this._bindFeaturePopups();
           }
