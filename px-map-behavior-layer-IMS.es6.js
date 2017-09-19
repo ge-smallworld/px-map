@@ -245,7 +245,7 @@
 
       const layerStartingZoomValue = this._getLayerStartingZoomValue();
       if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
-      this._requestCollectionsFromIMS(options, initialBounds);
+        this._requestCollectionsFromIMS(options, initialBounds);
       }
 
       //Bind to px-maps moveend to re-request the data with new bounds
