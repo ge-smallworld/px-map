@@ -48,6 +48,14 @@
         type: Object
       },
 
+      iconCanvas: {
+        type: Object
+      },
+
+      iconTree: {
+        type: Object
+      },
+
       /**
        * A switch to use certain settings for when the layer is being use on the demo page.
        *
@@ -162,6 +170,99 @@
       sketch: {
         type: Boolean,
         value: false
+      },
+
+      currentData: {
+        type: Object
+      }
+    },
+
+    _clearIMSLayer() {
+      this.elementInst.clearLayers();
+      if (!this.editable) {
+        this.iconCanvas.getContext('2d').clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
+        this.iconTree.clear();
+      }
+    },
+
+    _redrawIMSLayer() {
+      if (this.currentData) {
+        this.elementInst.clearLayers();
+        this.elementInst.addData(this.currentData);
+      }
+      if (!this.editable) {
+        const context = this.iconCanvas.getContext('2d');
+        context.clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
+        const img = new Image();
+        for (let data of this.iconTree.all()) {
+          img.onload = () => {
+            context.drawImage(img, data.minX, data.minY, data.maxX - data.minX, data.maxY - data.minY);
+          }
+          img.src = data.iconSrc;
+        }
+      }
+    },
+
+    _addIconCanvas(layerId) {
+      if (this.editable) {
+        return;
+      }
+      const mapInst = this.parentNode.elementInst;
+      const width = window.getComputedStyle(mapInst._container).width;
+      const height = window.getComputedStyle(mapInst._container).height;
+      this.iconCanvas = document.createElement('canvas');
+      this.iconCanvas.width = parseInt(width);
+      this.iconCanvas.height = parseInt(height);
+      this.iconCanvas.style.pointerEvents = 'none';
+      mapInst.getPane(layerId).appendChild(this.iconCanvas);
+
+      mapInst.addEventListener('click', (evt) => {
+        this._handleIconCanvasClicked(evt);
+      });
+    },
+
+    _addIcon(feature, latlng, layerId, options) {
+      if (this.editable) {
+        let markerIcon;
+        const iconOptions = options.markerIconOptions;
+        iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
+        iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
+
+        if (iconOptions.divIcon) {
+            iconOptions.html = iconOptions.html || defaultMarkerIcon;
+            markerIcon = L.divIcon(iconOptions);
+        } else {
+            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
+            markerIcon = L.icon(iconOptions);
+        }
+
+        return new L.Marker(latlng, {icon: markerIcon, pane: layerId});
+      } else {
+        const mapInst = this.parentNode.elementInst;
+        const iconUrl = options.markerIconOptions.iconUrl || defaultMarkerIconURL;
+        const iconSize = options.markerIconOptions.iconSize || [16, 16];
+        const iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
+        const conPoint = mapInst.latLngToContainerPoint(latlng);
+        const x = conPoint.x - iconAnchor[0];
+        const y = conPoint.y - iconAnchor[1];
+        const context = this.iconCanvas.getContext('2d');
+        const img = new Image();
+
+        this.iconTree.insert({
+          minX: x,
+          minY: y,
+          maxX: x + iconSize[0],
+          maxY: y + iconSize[1],
+          feature: feature,
+          latlng: latlng,
+          layerId: layerId,
+          iconSrc: iconUrl
+        });
+
+        img.onload = () => {
+          context.drawImage(img, x, y, iconSize[0], iconSize[1]);
+        }
+        img.src = iconUrl;
       }
     },
 
@@ -195,34 +296,22 @@
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
-      const customPaneName =  options.pane.name || options.layerName;
+      const layerId =  options.pane.name || options.layerName;
       const attributeProperties = this.getInstOptions().featureStyle;
 
       //Create a custom pane to draw onto so that we can control the draw order.
-      mapInst.createPane(customPaneName);
-      mapInst.getPane(customPaneName).classList.add('custom-pane');
-      mapInst.getPane(customPaneName).style.zIndex = options.pane.zIndex;
+      mapInst.createPane(layerId);
+      mapInst.getPane(layerId).classList.add('custom-pane');
+      mapInst.getPane(layerId).style.zIndex = options.pane.zIndex;
+
+      this._addIconCanvas(layerId);
 
       //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
 
       const IMSLayer = L.geoJson(null, {
         pointToLayer: (feature, latlng) => {
-          let markerIcon;
-          const iconOptions = options.markerIconOptions;
-          iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
-          iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
-
-
-          if (iconOptions.divIcon) {
-            iconOptions.html = iconOptions.html || defaultMarkerIcon;
-            markerIcon = L.divIcon(iconOptions);
-          } else {
-            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
-            markerIcon = L.icon(iconOptions);
-          }
-
-          return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
+          return this._addIcon(feature, latlng, layerId, options);
         },
 
         onEachFeature: (feature, layer) => {
@@ -232,16 +321,18 @@
 
         style: (feature) => {
           const featureProperties = feature.properties.style || {};
-
           return this._getStyle(featureProperties, attributeProperties);
         },
 
-        pane: customPaneName
+        pane: layerId
       });
 
       if(this.editable) {
         this._addEditableTools(mapInst, IMSLayer);
       }
+
+      // Setup rtree for storing points for selection
+      this.iconTree = new rbush(16);
 
       //Make request to IMS to get collection
       this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
@@ -251,21 +342,48 @@
 
       //Bind to px-maps moveend to re-request the data with new bounds
       //If layer is not going to be rendered at the current zoom level, don't load
-      this.parentNode.elementInst.on({
+      mapInst.on({
+        zoomstart: () => {
+          // TODO update the transform of the canvas whilst zooming
+          if (!this.editable) {
+            this.iconCanvas.getContext('2d').clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
+          }
+        },
         moveend: () => {
           const layerStartingZoomValue = this._getLayerStartingZoomValue();
           if(this.parentNode.elementInst.getZoom() >= layerStartingZoomValue) {
             const bounds = this.parentNode.elementInst.getBounds();
             const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
-
             this.setNewBounds(boundsArray);
           } else {
-            this.elementInst.clearLayers();
+            this._clearIMSLayer();
           }
         }
       });
 
       return IMSLayer;
+    },
+
+    _updateIconCanvas() {
+      if (this.editable) {
+        return;
+      }
+      const mapInst = this.parentNode.elementInst;
+
+      // Update canvas transform
+      const trans = window.getComputedStyle(this.iconCanvas.parentNode.parentNode).transform;
+      const transParts = trans.match(/-?[\d\.]+/g);
+      const transX = - parseInt(transParts[4]);
+      const transY = - parseInt(transParts[5]);
+      this.iconCanvas.parentNode.style.transform = `translate3d(${transX}px, ${transY}px, 0px)`;
+
+      // Update canvas size to match the map
+      const width = parseInt(window.getComputedStyle(mapInst._container).width);
+      const height = parseInt(window.getComputedStyle(mapInst._container).height);
+      if (this.iconCanvas.width != width || this.iconCanvas.height != height) {
+        this.iconCanvas.width = width;
+        this.iconCanvas.height = height;
+      }
     },
 
     _getLayerStartingZoomValue() {
@@ -281,8 +399,12 @@
       }
 
       //Now that we have the data, add it to the instance
-      this.elementInst.clearLayers();
-      this.elementInst.addData(eventContext.detail.response);
+      this._clearIMSLayer();
+      this._updateIconCanvas();
+
+      this.currentData = eventContext.detail.response;
+      this.elementInst.addData(this.currentData);
+
       this.fire('IMS-layer-ready', collectionName);
     },
 
@@ -381,7 +503,7 @@
     updateInst(lastOptions, nextOptions) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
-      const customPaneName = lastOptions.pane.name || lastOptions.layerName;
+      const layerId = lastOptions.pane.name || lastOptions.layerName;
 
       if (nextOptions.layerName.length < 0) {
         this.elementInst.clearLayers();
@@ -413,24 +535,16 @@
       }
       else if (lastOptions.markerIconOptionsHash !== nextOptions.markerIconOptionsHash) {
         this.elementInst.pointToLayer = (feature, latlng) => {
-          const iconOptions = nextOptions.markerIconOptions;
-          iconOptions.iconSize = nextOptions.markerIconOptions.iconSize || [16, 16];
-          iconOptions.iconAnchor = nextOptions.markerIconOptions.iconAnchor || [8, 8];
-          iconOptions.iconUrl = nextOptions.markerIconOptions.iconSize || defaultMarkerIconURL;
-
-          const markerIcon = L.icon(iconOptions);
-
-          return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
+          this._addIcon(feature, latlng, layerId, nextOptions);
         };
 
-        const currentData = this.elementInst.toGeoJSON();
         this.elementInst.clearLayers();
-        this.elementInst.addData(currentData);
+        this.elementInst.addData(this.currentData);
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
       } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
-        this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.pane.zIndex;
+        this.parentNode.elementInst.getPane(layerId).style.zIndex = nextOptions.pane.zIndex;
       }
     },
 
@@ -471,6 +585,56 @@
         }
         ironAjax.generateRequest();
       }
+    },
+
+    /**
+     * Redraws the feature mathcing the supplied id with the style attributes.
+     * @param {string} featureId - id of the feature to redraw.
+     * @param {object} styleOptions - An object with settings that will be used
+     * to style the feature. See featureStyle for available options.
+     * @return {boolean} If the feature has been highlighted.
+     */
+    highlightFeature(featureId, styleOptions) {
+      let done = false;
+      const layers = this.elementInst._layers;
+      for (let i in layers) {
+        let layer = layers[i];
+  			if (layer.feature.id === featureId) {
+          layer._icon ? (layer._icon.setAttribute('src', styleOptions.iconSrc))
+                        : (layer.setStyle(styleOptions));
+          done = true;
+          break;
+        }
+    	}
+      if (!done) {
+        for (let data of this.iconTree.all()) {
+          if (data.feature.id === featureId) {
+            const context = this.iconCanvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => {
+              context.drawImage(img, data.minX, data.minY, data.maxX - data.minX, data.maxY - data.minY);
+            }
+            img.src = styleOptions.iconSrc;
+            done = true;
+            break;
+          }
+        }
+      }
+      return done;
+    },
+
+    /**
+     * Redraws the IMS layer to remove any highlighting.
+     */
+    clearHighlights() {
+      this._redrawIMSLayer();
+    },
+
+    /**
+     * Returns the feature collection displayed by this layer.
+     */
+    featureCollection() {
+      return this.currentData;
     },
 
     _handleFeatureAdded(evt) {
@@ -523,8 +687,26 @@
       const detail = {};
       if (evt.target && evt.target.feature) {
         detail.feature = evt.target.feature;
+        detail.layerId = this.elementInst.options.pane;
       }
       this.fire('px-map-layer-geojson-feature-tapped', detail);
+    },
+
+    _handleIconCanvasClicked(evt) {
+      const conPoint = evt.containerPoint;
+      const points = this.iconTree.search({
+        minX: conPoint.x,
+        minY: conPoint.y,
+        maxX: conPoint.x,
+        maxY: conPoint.y
+      });
+      // TODO - return array of features
+      if (points.length) {
+          this.fire('px-map-layer-geojson-feature-tapped', {
+            feature: points[0].feature,
+            layerId: this.elementInst.options.pane
+          });
+      }
     },
     /**
      * Fired when a feature is tapped by the user.
