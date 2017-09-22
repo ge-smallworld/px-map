@@ -48,11 +48,13 @@
         type: Object
       },
 
-      iconCanvas: {
+      // Canvas for rendering non-editable point images.
+      _iconCanvas: {
         type: Object
       },
 
-      iconTree: {
+      // Rtree for storing point position data.
+      _iconTree: {
         type: Object
       },
 
@@ -86,7 +88,6 @@
         type: String,
         value: "1+"
       },
-
 
       /**
        * An object with settings that will be used to style each feature when
@@ -174,12 +175,14 @@
 
       /**
        * The current feature collection displayed by this layer.
+       * @type {Object}
        */
       featureCollection: {
         type: Object
       },
 
-      featureMap: {
+      // Object to store feature id and feature pairs.
+      _featureMap: {
         type: Object,
         value: {}
       }
@@ -192,9 +195,9 @@
         // Store feature, layer, icon data
         newMap[feature.id] = [feature, undefined, undefined];
       }
-      this.featureMap = newMap;
+      this._featureMap = newMap;
       this.featureCollection = featureCol;
-      this.iconTree.clear();
+      this._iconTree.clear();
 
       this.elementInst.addData(featureCol);
 
@@ -210,7 +213,7 @@
      * @return {object} feature object
      */
     getFeature(featureId) {
-      const data = this.featureMap[featureId];
+      const data = this._featureMap[featureId];
       if (data) {
         return data[0];
       }
@@ -218,8 +221,8 @@
 
     _clearIMSLayer() {
       this.elementInst.clearLayers();
-      if (this.iconCanvas) {
-        this.iconCanvas.getContext('2d').clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
+      if (this._iconCanvas) {
+        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
       }
     },
 
@@ -228,9 +231,9 @@
         return;
       }
       this._clearIMSLayer();
-      if (this.iconCanvas) {
-        const context = this.iconCanvas.getContext('2d');
-        const map = this.featureMap;
+      if (this._iconCanvas) {
+        const context = this._iconCanvas.getContext('2d');
+        const map = this._featureMap;
         for (let featureId in map) {
           const iconData = map[featureId][2];
           if (iconData) {
@@ -255,12 +258,12 @@
       const width = window.getComputedStyle(mapInst._container).width;
       const height = window.getComputedStyle(mapInst._container).height;
 
-      this.iconCanvas = document.createElement('canvas');
-      this.iconCanvas.width = parseInt(width);
-      this.iconCanvas.height = parseInt(height);
-      this.iconCanvas.style.pointerEvents = 'none';
+      this._iconCanvas = document.createElement('canvas');
+      this._iconCanvas.width = parseInt(width);
+      this._iconCanvas.height = parseInt(height);
+      this._iconCanvas.style.pointerEvents = 'none';
 
-      mapInst.getPane(paneName).appendChild(this.iconCanvas);
+      mapInst.getPane(paneName).appendChild(this._iconCanvas);
 
       mapInst.addEventListener('click', (evt) => {
         this._handleIconCanvasClicked(evt);
@@ -289,7 +292,7 @@
         const conPoint = mapInst.latLngToContainerPoint(latlng);
         const x = conPoint.x - iconAnchor[0];
         const y = conPoint.y - iconAnchor[1];
-        const context = this.iconCanvas.getContext('2d');
+        const context = this._iconCanvas.getContext('2d');
         const img = new Image();
         const iconData = {
           minX: x,
@@ -302,8 +305,8 @@
         };
 
         // Store icon data in rtree for selection lookup and feature map for highlight lookup
-        this.iconTree.insert(iconData);
-        this.featureMap[feature.id][2] = iconData;
+        this._iconTree.insert(iconData);
+        this._featureMap[feature.id][2] = iconData;
         // Draw image on canvas
         img.onload = () => {
           context.drawImage(img, x, y, iconSize[0], iconSize[1]);
@@ -382,15 +385,15 @@
       }
 
       // Setup rtree for storing points for selection
-      this.iconTree = new rbush(16);
+      this._iconTree = new rbush(16);
 
       //Bind to px-maps moveend to re-request the data with new bounds
       //If layer is not going to be rendered at the current zoom level, don't load
       mapInst.on({
         zoomstart: () => {
           // TODO update the transform of the canvas whilst zooming
-          if (this.iconCanvas) {
-            this.iconCanvas.getContext('2d').clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
+          if (this._iconCanvas) {
+            this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
           }
         },
         moveend: () => {
@@ -421,24 +424,24 @@
     },
 
     _updateIconCanvas() {
-      if (!this.iconCanvas) {
+      if (!this._iconCanvas) {
         return;
       }
       const mapInst = this.parentNode.elementInst;
 
       // Update canvas transform
-      const trans = window.getComputedStyle(this.iconCanvas.parentNode.parentNode).transform;
+      const trans = window.getComputedStyle(this._iconCanvas.parentNode.parentNode).transform;
       const transParts = trans.match(/-?[\d\.]+/g);
       const transX = - parseInt(transParts[4]);
       const transY = - parseInt(transParts[5]);
-      this.iconCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
+      this._iconCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
 
       // Update canvas size to match the map
       const width = parseInt(window.getComputedStyle(mapInst._container).width);
       const height = parseInt(window.getComputedStyle(mapInst._container).height);
-      if (this.iconCanvas.width != width || this.iconCanvas.height != height) {
-        this.iconCanvas.width = width;
-        this.iconCanvas.height = height;
+      if (this._iconCanvas.width != width || this._iconCanvas.height != height) {
+        this._iconCanvas.width = width;
+        this._iconCanvas.height = height;
       }
     },
 
@@ -650,7 +653,7 @@
      */
     highlightFeature(featureId, styleOptions) {
       let done = false;
-      const data = this.featureMap[featureId];
+      const data = this._featureMap[featureId];
       if (data) {
         if (data[1]) {
           const layer = data[1];
@@ -659,7 +662,7 @@
           done = true;
         } else if (data[2]) {
           const iconData = data[2];
-          const context = this.iconCanvas.getContext('2d');
+          const context = this._iconCanvas.getContext('2d');
           const img = new Image();
           img.onload = () => {
             context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
@@ -735,7 +738,7 @@
 
     _handleIconCanvasClicked(evt) {
       const conPoint = evt.containerPoint;
-      const points = this.iconTree.search({
+      const points = this._iconTree.search({
         minX: conPoint.x,
         minY: conPoint.y,
         maxX: conPoint.x,
