@@ -172,62 +172,107 @@
         value: false
       },
 
-      currentData: {
+      /**
+       * The current feature collection displayed by this layer.
+       */
+      featureCollection: {
         type: Object
+      },
+
+      featureMap: {
+        type: Object,
+        value: {}
+      }
+    },
+
+    _updateFeatures(featureCol) {
+      const newMap = {};
+      const features = featureCol.features;
+      for (let feature of features) {
+        // Store feature, layer, icon data
+        newMap[feature.id] = [feature, undefined, undefined];
+      }
+      this.featureMap = newMap;
+      this.featureCollection = featureCol;
+      this.iconTree.clear();
+
+      this.elementInst.addData(featureCol);
+
+      const layers = this.elementInst._layers;
+      for (let i in layers) {
+        const layer = layers[i];
+        newMap[layer.feature.id][1] = layer;
+      }
+    },
+
+    /**
+     * Returns a feature object displayed in this layer for the supplied id.
+     * @return {object} feature object
+     */
+    getFeature(featureId) {
+      const data = this.featureMap[featureId];
+      if (data) {
+        return data[0];
       }
     },
 
     _clearIMSLayer() {
       this.elementInst.clearLayers();
-      if (!this.editable) {
+      if (this.iconCanvas) {
         this.iconCanvas.getContext('2d').clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
-        this.iconTree.clear();
       }
     },
 
     _redrawIMSLayer() {
-      if (this.currentData) {
-        this.elementInst.clearLayers();
-        this.elementInst.addData(this.currentData);
+      if (!this.featureCollection) {
+        return;
       }
-      if (!this.editable) {
+      this._clearIMSLayer();
+      if (this.iconCanvas) {
         const context = this.iconCanvas.getContext('2d');
-        context.clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
-        const img = new Image();
-        for (let data of this.iconTree.all()) {
-          img.onload = () => {
-            context.drawImage(img, data.minX, data.minY, data.maxX - data.minX, data.maxY - data.minY);
+        const map = this.featureMap;
+        for (let featureId in map) {
+          const iconData = map[featureId][2];
+          if (iconData) {
+            const img = new Image();
+            img.onload = () => {
+              context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
+            }
+            img.src = iconData.iconSrc;
           }
-          img.src = data.iconSrc;
         }
+      } else {
+        this._updateFeatures(this.featureCollection);
       }
     },
 
-    _addIconCanvas(layerId) {
-      if (this.editable) {
+    _addIconCanvas(paneName) {
+      if (this.editable || !this.markerIconOptions) {
         return;
       }
+
       const mapInst = this.parentNode.elementInst;
       const width = window.getComputedStyle(mapInst._container).width;
       const height = window.getComputedStyle(mapInst._container).height;
+
       this.iconCanvas = document.createElement('canvas');
       this.iconCanvas.width = parseInt(width);
       this.iconCanvas.height = parseInt(height);
       this.iconCanvas.style.pointerEvents = 'none';
-      mapInst.getPane(layerId).appendChild(this.iconCanvas);
+
+      mapInst.getPane(paneName).appendChild(this.iconCanvas);
 
       mapInst.addEventListener('click', (evt) => {
         this._handleIconCanvasClicked(evt);
       });
     },
 
-    _addIcon(feature, latlng, layerId, options) {
+    _addIcon(feature, latlng, paneName, options) {
       if (this.editable) {
         let markerIcon;
         const iconOptions = options.markerIconOptions;
         iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
         iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
-
         if (iconOptions.divIcon) {
             iconOptions.html = iconOptions.html || defaultMarkerIcon;
             markerIcon = L.divIcon(iconOptions);
@@ -235,8 +280,7 @@
             iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
             markerIcon = L.icon(iconOptions);
         }
-
-        return new L.Marker(latlng, {icon: markerIcon, pane: layerId});
+        return new L.Marker(latlng, {icon: markerIcon, pane: paneName});
       } else {
         const mapInst = this.parentNode.elementInst;
         const iconUrl = options.markerIconOptions.iconUrl || defaultMarkerIconURL;
@@ -247,18 +291,20 @@
         const y = conPoint.y - iconAnchor[1];
         const context = this.iconCanvas.getContext('2d');
         const img = new Image();
-
-        this.iconTree.insert({
+        const iconData = {
           minX: x,
           minY: y,
           maxX: x + iconSize[0],
           maxY: y + iconSize[1],
           feature: feature,
           latlng: latlng,
-          layerId: layerId,
           iconSrc: iconUrl
-        });
+        };
 
+        // Store icon data in rtree for selection lookup and feature map for highlight lookup
+        this.iconTree.insert(iconData);
+        this.featureMap[feature.id][2] = iconData;
+        // Draw image on canvas
         img.onload = () => {
           context.drawImage(img, x, y, iconSize[0], iconSize[1]);
         }
@@ -296,22 +342,22 @@
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
-      const layerId =  options.pane.name || options.layerName;
+      const paneName =  options.pane.name || options.layerName;
       const attributeProperties = this.getInstOptions().featureStyle;
 
       //Create a custom pane to draw onto so that we can control the draw order.
-      mapInst.createPane(layerId);
-      mapInst.getPane(layerId).classList.add('custom-pane');
-      mapInst.getPane(layerId).style.zIndex = options.pane.zIndex;
+      mapInst.createPane(paneName);
+      mapInst.getPane(paneName).classList.add('custom-pane');
+      mapInst.getPane(paneName).style.zIndex = options.pane.zIndex;
 
-      this._addIconCanvas(layerId);
+      this._addIconCanvas(paneName);
 
       //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
 
       const IMSLayer = L.geoJson(null, {
         pointToLayer: (feature, latlng) => {
-          return this._addIcon(feature, latlng, layerId, options);
+          return this._addIcon(feature, latlng, paneName, options);
         },
 
         onEachFeature: (feature, layer) => {
@@ -324,7 +370,7 @@
           return this._getStyle(featureProperties, attributeProperties);
         },
 
-        pane: layerId
+        pane: paneName
       });
 
       if(this.editable) {
@@ -334,7 +380,7 @@
       if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
         this._requestCollectionsFromIMS(options, initialBounds);
       }
-      
+
       // Setup rtree for storing points for selection
       this.iconTree = new rbush(16);
 
@@ -343,7 +389,7 @@
       mapInst.on({
         zoomstart: () => {
           // TODO update the transform of the canvas whilst zooming
-          if (!this.editable) {
+          if (this.iconCanvas) {
             this.iconCanvas.getContext('2d').clearRect(0, 0, this.iconCanvas.width, this.iconCanvas.height);
           }
         },
@@ -375,7 +421,7 @@
     },
 
     _updateIconCanvas() {
-      if (this.editable) {
+      if (!this.iconCanvas) {
         return;
       }
       const mapInst = this.parentNode.elementInst;
@@ -385,7 +431,7 @@
       const transParts = trans.match(/-?[\d\.]+/g);
       const transX = - parseInt(transParts[4]);
       const transY = - parseInt(transParts[5]);
-      this.iconCanvas.parentNode.style.transform = `translate3d(${transX}px, ${transY}px, 0px)`;
+      this.iconCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
 
       // Update canvas size to match the map
       const width = parseInt(window.getComputedStyle(mapInst._container).width);
@@ -405,29 +451,27 @@
 
     _displayData(eventContext) {
       let collectionName = eventContext.detail.url.split('/v1/collections/')[1];
-      if(this.demo) {
+      if (this.demo) {
         collectionName = 'demo';
       }
 
       //Now that we have the data, add it to the instance
       this._clearIMSLayer();
-      this._updateIconCanvas();
-
-      this.currentData = eventContext.detail.response;
-      this.elementInst.addData(this.currentData);
+      this._updateIconCanvas()
+      this._updateFeatures(eventContext.detail.response);
 
       this.fire('IMS-layer-ready', collectionName);
     },
 
     _getCollectionError(event) {
       //If we are aborting the request, don't show an error
-      if(event.detail.error.message !== "Request aborted.") {
+      if (event.detail.error.message !== "Request aborted.") {
         this.fire('IMS-layer-error', event.detail.error);
       }
     },
 
     _addEditableTools(leafletMap, IMSLayer) {
-      if(!leafletMap.editTools) {
+      if (!leafletMap.editTools) {
         leafletMap.editTools = new L.Editable(leafletMap);
         //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
         leafletMap.editTools.addEventListener('editable:drawing:start', () => {
@@ -453,7 +497,7 @@
         });
       }
 
-      if(this.sketch) {
+      if (this.sketch) {
         leafletMap.editTools.featuresLayer = IMSLayer;
       }
 
@@ -514,7 +558,7 @@
     updateInst(lastOptions, nextOptions) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
-      const layerId = lastOptions.pane.name || lastOptions.layerName;
+      const paneName = lastOptions.pane.name || lastOptions.layerName;
 
       if (nextOptions.layerName.length < 0) {
         this.elementInst.clearLayers();
@@ -544,16 +588,17 @@
       }
       else if (lastOptions.markerIconOptionsHash !== nextOptions.markerIconOptionsHash) {
         this.elementInst.pointToLayer = (feature, latlng) => {
-          this._addIcon(feature, latlng, layerId, nextOptions);
+          this._addIcon(feature, latlng, paneName, nextOptions);
         };
 
-        this.elementInst.clearLayers();
-        this.elementInst.addData(this.currentData);
+        this._clearIMSLayer();
+        this._updateFeatures(this.featureCollection);
+
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
       } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
-        this.parentNode.elementInst.getPane(layerId).style.zIndex = nextOptions.pane.zIndex;
+        this.parentNode.elementInst.getPane(paneName).style.zIndex = nextOptions.pane.zIndex;
       }
     },
 
@@ -605,28 +650,22 @@
      */
     highlightFeature(featureId, styleOptions) {
       let done = false;
-      const layers = this.elementInst._layers;
-      for (let i in layers) {
-        let layer = layers[i];
-  			if (layer.feature.id === featureId) {
+      const data = this.featureMap[featureId];
+      if (data) {
+        if (data[1]) {
+          const layer = data[1];
           layer._icon ? (layer._icon.setAttribute('src', styleOptions.iconSrc))
                         : (layer.setStyle(styleOptions));
           done = true;
-          break;
-        }
-    	}
-      if (!done) {
-        for (let data of this.iconTree.all()) {
-          if (data.feature.id === featureId) {
-            const context = this.iconCanvas.getContext('2d');
-            const img = new Image();
-            img.onload = () => {
-              context.drawImage(img, data.minX, data.minY, data.maxX - data.minX, data.maxY - data.minY);
-            }
-            img.src = styleOptions.iconSrc;
-            done = true;
-            break;
+        } else if (data[2]) {
+          const iconData = data[2];
+          const context = this.iconCanvas.getContext('2d');
+          const img = new Image();
+          img.onload = () => {
+            context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
           }
+          img.src = styleOptions.iconSrc;
+          done = true;
         }
       }
       return done;
@@ -637,13 +676,6 @@
      */
     clearHighlights() {
       this._redrawIMSLayer();
-    },
-
-    /**
-     * Returns the feature collection displayed by this layer.
-     */
-    featureCollection() {
-      return this.currentData;
     },
 
     _handleFeatureAdded(evt) {
@@ -696,7 +728,7 @@
       const detail = {};
       if (evt.target && evt.target.feature) {
         detail.feature = evt.target.feature;
-        detail.layerId = this.elementInst.options.pane;
+        detail.layerId = this.id;
       }
       this.fire('px-map-layer-geojson-feature-tapped', detail);
     },
@@ -713,7 +745,7 @@
       if (points.length) {
           this.fire('px-map-layer-geojson-feature-tapped', {
             feature: points[0].feature,
-            layerId: this.elementInst.options.pane
+            layerId: this.id
           });
       }
     },
