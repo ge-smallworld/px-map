@@ -48,12 +48,20 @@
         type: Object
       },
 
-      // Canvas for rendering non-editable point images.
+      /**
+       * Canvas for rendering non-editable point images.
+       *
+       * @type {Object}
+       */
       _iconCanvas: {
         type: Object
       },
 
-      // Rtree for storing point position data.
+      /**
+       * Rtree for storing point position data.
+       *
+       * @type {Object}
+       */
       _iconTree: {
         type: Object
       },
@@ -175,19 +183,29 @@
 
       /**
        * The current feature collection displayed by this layer.
+       *
        * @type {Object}
        */
       featureCollection: {
         type: Object
       },
 
-      // Object to store feature id and feature pairs.
+      /**
+       * Object to store feature id and feature pairs.
+       *
+       * @type {Object}
+       */
       _featureMap: {
         type: Object,
         value: {}
       }
     },
 
+    /**
+     * Update the data displayed by this layer.
+     * Refreshes the feature map for lookup by id.
+     * @param {Object} featureCol - feature collection to display
+     */
     _updateFeatures(featureCol) {
       const newMap = {};
       const {features} = featureCol;
@@ -210,6 +228,7 @@
 
     /**
      * Returns a feature object displayed in this layer for the supplied id.
+     * @param {String} featureId - id of the feature
      * @return {object} feature object
      */
     getFeature(featureId) {
@@ -219,21 +238,34 @@
       }
     },
 
+    /**
+     * Removes the features from the layer.
+     */
     _clearIMSLayer() {
       this.elementInst.clearLayers();
       if (this._iconCanvas) {
         this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
       }
+      this._featureMap = {};
+      this.featureCollection = undefined;
+      this._iconTree.clear();
     },
 
+    /**
+     * Redraws the feaures in the layer.
+     */
     _redrawIMSLayer() {
       if (!this.featureCollection) {
         return;
       }
-      this._clearIMSLayer();
+
+      this.elementInst.clearLayers();
+
       if (this._iconCanvas) {
         const context = this._iconCanvas.getContext('2d');
         const map = this._featureMap;
+
+        context.clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
 
         for (let featureId in map) {
           const iconData = map[featureId][2];
@@ -250,6 +282,10 @@
       }
     },
 
+    /**
+     * Creates a canvas in the layer pane for direct rendering of point features.
+     * @param {String} paneName - name of the layer element
+     */
     _addIconCanvas(paneName) {
       if (this.editable || !this.markerIconOptions) {
         return;
@@ -271,6 +307,11 @@
       });
     },
 
+    /**
+     * Adds a point to the layer.
+     * Creates a Marker if the layer is editable, otherwise renders the point directly
+     * on a canvas.
+     */
     _addIcon(feature, latlng, paneName, options) {
       if (this.editable) {
         let markerIcon;
@@ -425,6 +466,9 @@
       }
     },
 
+    /**
+     * Updates the width, height and transform of the icon canvas.
+     */
     _updateIconCanvas() {
       if (!this._iconCanvas) {
         return;
@@ -667,7 +711,7 @@
           const iconData = data[2];
           const context = this._iconCanvas.getContext('2d');
           const img = new Image();
-          
+
           img.onload = () => {
             context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
           }
