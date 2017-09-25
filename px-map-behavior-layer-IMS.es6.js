@@ -190,7 +190,7 @@
 
     _updateFeatures(featureCol) {
       const newMap = {};
-      const features = featureCol.features;
+      const {features} = featureCol;
       for (let feature of features) {
         // Store feature, layer, icon data
         newMap[feature.id] = [feature, undefined, undefined];
@@ -234,6 +234,7 @@
       if (this._iconCanvas) {
         const context = this._iconCanvas.getContext('2d');
         const map = this._featureMap;
+
         for (let featureId in map) {
           const iconData = map[featureId][2];
           if (iconData) {
@@ -274,6 +275,7 @@
       if (this.editable) {
         let markerIcon;
         const iconOptions = options.markerIconOptions;
+
         iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
         iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
         if (iconOptions.divIcon) {
@@ -645,7 +647,7 @@
     },
 
     /**
-     * Redraws the feature mathcing the supplied id with the style attributes.
+     * Redraws the feature matching the supplied id with the style attributes.
      * @param {string} featureId - id of the feature to redraw.
      * @param {object} styleOptions - An object with settings that will be used
      * to style the feature. See featureStyle for available options.
@@ -654,6 +656,7 @@
     highlightFeature(featureId, styleOptions) {
       let done = false;
       const data = this._featureMap[featureId];
+
       if (data) {
         if (data[1]) {
           const layer = data[1];
@@ -664,6 +667,7 @@
           const iconData = data[2];
           const context = this._iconCanvas.getContext('2d');
           const img = new Image();
+          
           img.onload = () => {
             context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
           }
@@ -744,7 +748,7 @@
         maxX: conPoint.x,
         maxY: conPoint.y
       });
-      // TODO - return array of features
+      // Note - only returns first match
       if (points.length) {
           this.fire('px-map-layer-geojson-feature-tapped', {
             feature: points[0].feature,
