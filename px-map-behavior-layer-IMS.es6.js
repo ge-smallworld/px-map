@@ -258,6 +258,10 @@
       if (!this.featureCollection) {
         return;
       }
+      
+      if (this.parentNode.elementInst.getZoom() < this._getLayerStartingZoomValue()) {
+        return;
+      }
 
       this.elementInst.clearLayers();
 
@@ -699,6 +703,11 @@
      */
     highlightFeature(featureId, styleOptions) {
       let done = false;
+
+      if (this.parentNode.elementInst.getZoom() < this._getLayerStartingZoomValue()) {
+          return done;
+      }
+
       const data = this._featureMap[featureId];
 
       if (data) {
@@ -719,6 +728,7 @@
           done = true;
         }
       }
+
       return done;
     },
 
