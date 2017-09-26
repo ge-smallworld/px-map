@@ -49,6 +49,24 @@
       },
 
       /**
+       * Canvas for rendering non-editable point images.
+       *
+       * @type {Object}
+       */
+      _iconCanvas: {
+        type: Object
+      },
+
+      /**
+       * Rtree for storing point position data.
+       *
+       * @type {Object}
+       */
+      _iconTree: {
+        type: Object
+      },
+
+      /**
        * A switch to use certain settings for when the layer is being use on the demo page.
        *
        * @type {String}
@@ -78,7 +96,6 @@
         type: String,
         value: "1+"
       },
-
 
       /**
        * An object with settings that will be used to style each feature when
@@ -162,6 +179,182 @@
       sketch: {
         type: Boolean,
         value: false
+      },
+
+      /**
+       * The current feature collection displayed by this layer.
+       *
+       * @type {Object}
+       */
+      featureCollection: {
+        type: Object
+      },
+
+      /**
+       * Object to store feature id and feature pairs.
+       *
+       * @type {Object}
+       */
+      _featureMap: {
+        type: Object,
+        value: {}
+      }
+    },
+
+    /**
+     * Update the data displayed by this layer.
+     * Refreshes the feature map for lookup by id.
+     * @param {Object} featureCol - feature collection to display
+     */
+    _updateFeatures(featureCol) {
+      const newMap = {};
+      const {features} = featureCol;
+      for (let feature of features) {
+        // Store feature, layer, icon data
+        newMap[feature.id] = [feature, undefined, undefined];
+      }
+      this._featureMap = newMap;
+      this.featureCollection = featureCol;
+      this._iconTree.clear();
+
+      this.elementInst.addData(featureCol);
+
+      const layers = this.elementInst._layers;
+      for (let i in layers) {
+        const layer = layers[i];
+        newMap[layer.feature.id][1] = layer;
+      }
+    },
+
+    /**
+     * Returns a feature object displayed in this layer for the supplied id.
+     * @param {String} featureId - id of the feature
+     * @return {object} feature object
+     */
+    getFeature(featureId) {
+      const data = this._featureMap[featureId];
+      if (data) {
+        return data[0];
+      }
+    },
+
+    /**
+     * Removes the features from the layer.
+     */
+    _clearIMSLayer() {
+      this.elementInst.clearLayers();
+      if (this._iconCanvas) {
+        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+      }
+      this._featureMap = {};
+      this.featureCollection = undefined;
+      this._iconTree.clear();
+    },
+
+    /**
+     * Redraws the feaures in the layer.
+     */
+    _redrawIMSLayer() {
+      if (!this.featureCollection) {
+        return;
+      }
+
+      this.elementInst.clearLayers();
+
+      if (this._iconCanvas) {
+        const context = this._iconCanvas.getContext('2d');
+        const map = this._featureMap;
+
+        context.clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+
+        for (let featureId in map) {
+          const iconData = map[featureId][2];
+          if (iconData) {
+            const img = new Image();
+            img.onload = () => {
+              context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
+            }
+            img.src = iconData.iconSrc;
+          }
+        }
+      } else {
+        this._updateFeatures(this.featureCollection);
+      }
+    },
+
+    /**
+     * Creates a canvas in the layer pane for direct rendering of point features.
+     * @param {String} paneName - name of the layer element
+     */
+    _addIconCanvas(paneName) {
+      if (this.editable || !this.markerIconOptions) {
+        return;
+      }
+
+      const mapInst = this.parentNode.elementInst;
+      const width = window.getComputedStyle(mapInst._container).width;
+      const height = window.getComputedStyle(mapInst._container).height;
+
+      this._iconCanvas = document.createElement('canvas');
+      this._iconCanvas.width = parseInt(width);
+      this._iconCanvas.height = parseInt(height);
+      this._iconCanvas.style.pointerEvents = 'none';
+
+      mapInst.getPane(paneName).appendChild(this._iconCanvas);
+
+      mapInst.addEventListener('click', (evt) => {
+        this._handleIconCanvasClicked(evt);
+      });
+    },
+
+    /**
+     * Adds a point to the layer.
+     * Creates a Marker if the layer is editable, otherwise renders the point directly
+     * on a canvas.
+     */
+    _addIcon(feature, latlng, paneName, options) {
+      if (this.editable) {
+        let markerIcon;
+        const iconOptions = options.markerIconOptions;
+
+        iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
+        iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
+        if (iconOptions.divIcon) {
+            iconOptions.html = iconOptions.html || defaultMarkerIcon;
+            markerIcon = L.divIcon(iconOptions);
+        } else {
+            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
+            markerIcon = L.icon(iconOptions);
+        }
+        return new L.Marker(latlng, {icon: markerIcon, pane: paneName});
+      } else {
+        const mapInst = this.parentNode.elementInst;
+        const iconUrl = options.markerIconOptions.iconUrl || defaultMarkerIconURL;
+        const iconSize = options.markerIconOptions.iconSize || [16, 16];
+        const iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
+        const conPoint = mapInst.latLngToContainerPoint(latlng);
+        const x = conPoint.x - iconAnchor[0];
+        const y = conPoint.y - iconAnchor[1];
+        const context = this._iconCanvas.getContext('2d');
+        const img = new Image();
+        const iconData = {
+          minX: x,
+          minY: y,
+          maxX: x + iconSize[0],
+          maxY: y + iconSize[1],
+          feature: feature,
+          latlng: latlng,
+          iconSrc: iconUrl
+        };
+
+        // Store icon data in rtree for selection lookup and feature map for highlight lookup
+        this._iconTree.insert(iconData);
+        this._featureMap[feature.id][2] = iconData;
+        // Draw image on canvas
+        img.onload = () => {
+          context.drawImage(img, x, y, iconSize[0], iconSize[1]);
+        }
+        img.src = iconUrl;
       }
     },
 
@@ -195,34 +388,22 @@
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
-      const customPaneName =  options.pane.name || options.layerName;
+      const paneName =  options.pane.name || options.layerName;
       const attributeProperties = this.getInstOptions().featureStyle;
 
       //Create a custom pane to draw onto so that we can control the draw order.
-      mapInst.createPane(customPaneName);
-      mapInst.getPane(customPaneName).classList.add('custom-pane');
-      mapInst.getPane(customPaneName).style.zIndex = options.pane.zIndex;
+      mapInst.createPane(paneName);
+      mapInst.getPane(paneName).classList.add('custom-pane');
+      mapInst.getPane(paneName).style.zIndex = options.pane.zIndex;
+
+      this._addIconCanvas(paneName);
 
       //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
 
       const IMSLayer = L.geoJson(null, {
         pointToLayer: (feature, latlng) => {
-          let markerIcon;
-          const iconOptions = options.markerIconOptions;
-          iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
-          iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
-
-
-          if (iconOptions.divIcon) {
-            iconOptions.html = iconOptions.html || defaultMarkerIcon;
-            markerIcon = L.divIcon(iconOptions);
-          } else {
-            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
-            markerIcon = L.icon(iconOptions);
-          }
-
-          return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
+          return this._addIcon(feature, latlng, paneName, options);
         },
 
         onEachFeature: (feature, layer) => {
@@ -232,11 +413,10 @@
 
         style: (feature) => {
           const featureProperties = feature.properties.style || {};
-
           return this._getStyle(featureProperties, attributeProperties);
         },
 
-        pane: customPaneName
+        pane: paneName
       });
 
       if(this.editable) {
@@ -247,9 +427,18 @@
         this._requestCollectionsFromIMS(options, initialBounds);
       }
 
+      // Setup rtree for storing points for selection
+      this._iconTree = new rbush(16);
+
       //Bind to px-maps moveend to re-request the data with new bounds
       //If layer is not going to be rendered at the current zoom level, don't load
-      this.parentNode.elementInst.on({
+      mapInst.on({
+        zoomstart: () => {
+          // TODO update the transform of the canvas whilst zooming
+          if (this._iconCanvas) {
+            this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+          }
+        },
         moveend: () => {
           this._checkZoomLevelVisibilities();
         }
@@ -277,6 +466,31 @@
       }
     },
 
+    /**
+     * Updates the width, height and transform of the icon canvas.
+     */
+    _updateIconCanvas() {
+      if (!this._iconCanvas) {
+        return;
+      }
+      const mapInst = this.parentNode.elementInst;
+
+      // Update canvas transform
+      const trans = window.getComputedStyle(this._iconCanvas.parentNode.parentNode).transform;
+      const transParts = trans.match(/-?[\d\.]+/g);
+      const transX = - parseInt(transParts[4]);
+      const transY = - parseInt(transParts[5]);
+      this._iconCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
+
+      // Update canvas size to match the map
+      const width = parseInt(window.getComputedStyle(mapInst._container).width);
+      const height = parseInt(window.getComputedStyle(mapInst._container).height);
+      if (this._iconCanvas.width != width || this._iconCanvas.height != height) {
+        this._iconCanvas.width = width;
+        this._iconCanvas.height = height;
+      }
+    },
+
     _getLayerStartingZoomValue() {
       const start = 0;
       const end = this.visibilityZoomLevels.indexOf("+");
@@ -286,25 +500,27 @@
 
     _displayData(eventContext) {
       let collectionName = eventContext.detail.url.split('/v1/collections/')[1];
-      if(this.demo) {
+      if (this.demo) {
         collectionName = 'demo';
       }
 
       //Now that we have the data, add it to the instance
-      this.elementInst.clearLayers();
-      this.elementInst.addData(eventContext.detail.response);
+      this._clearIMSLayer();
+      this._updateIconCanvas()
+      this._updateFeatures(eventContext.detail.response);
+
       this.fire('IMS-layer-ready', collectionName);
     },
 
     _getCollectionError(event) {
       //If we are aborting the request, don't show an error
-      if(event.detail.error.message !== "Request aborted.") {
+      if (event.detail.error.message !== "Request aborted.") {
         this.fire('IMS-layer-error', event.detail.error);
       }
     },
 
     _addEditableTools(leafletMap, IMSLayer) {
-      if(!leafletMap.editTools) {
+      if (!leafletMap.editTools) {
         leafletMap.editTools = new L.Editable(leafletMap);
         //Disable doubleclick zoom when drawing to prevent zooming when double clicking to end a line
         leafletMap.editTools.addEventListener('editable:drawing:start', () => {
@@ -330,7 +546,7 @@
         });
       }
 
-      if(this.sketch) {
+      if (this.sketch) {
         leafletMap.editTools.featuresLayer = IMSLayer;
       }
 
@@ -391,7 +607,7 @@
     updateInst(lastOptions, nextOptions) {
       const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
       const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
-      const customPaneName = lastOptions.pane.name || lastOptions.layerName;
+      const paneName = lastOptions.pane.name || lastOptions.layerName;
 
       if (nextOptions.layerName.length < 0) {
         this.elementInst.clearLayers();
@@ -421,24 +637,17 @@
       }
       else if (lastOptions.markerIconOptionsHash !== nextOptions.markerIconOptionsHash) {
         this.elementInst.pointToLayer = (feature, latlng) => {
-          const iconOptions = nextOptions.markerIconOptions;
-          iconOptions.iconSize = nextOptions.markerIconOptions.iconSize || [16, 16];
-          iconOptions.iconAnchor = nextOptions.markerIconOptions.iconAnchor || [8, 8];
-          iconOptions.iconUrl = nextOptions.markerIconOptions.iconSize || defaultMarkerIconURL;
-
-          const markerIcon = L.icon(iconOptions);
-
-          return new L.Marker(latlng, {icon: markerIcon, pane: customPaneName});
+          this._addIcon(feature, latlng, paneName, nextOptions);
         };
 
-        const currentData = this.elementInst.toGeoJSON();
-        this.elementInst.clearLayers();
-        this.elementInst.addData(currentData);
+        this._clearIMSLayer();
+        this._updateFeatures(this.featureCollection);
+
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
       } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
-        this.parentNode.elementInst.getPane(customPaneName).style.zIndex = nextOptions.pane.zIndex;
+        this.parentNode.elementInst.getPane(paneName).style.zIndex = nextOptions.pane.zIndex;
       }
     },
 
@@ -479,6 +688,45 @@
         }
         ironAjax.generateRequest();
       }
+    },
+
+    /**
+     * Redraws the feature matching the supplied id with the style attributes.
+     * @param {string} featureId - id of the feature to redraw.
+     * @param {object} styleOptions - An object with settings that will be used
+     * to style the feature. See featureStyle for available options.
+     * @return {boolean} If the feature has been highlighted.
+     */
+    highlightFeature(featureId, styleOptions) {
+      let done = false;
+      const data = this._featureMap[featureId];
+
+      if (data) {
+        if (data[1]) {
+          const layer = data[1];
+          layer._icon ? (layer._icon.setAttribute('src', styleOptions.iconSrc))
+                        : (layer.setStyle(styleOptions));
+          done = true;
+        } else if (data[2]) {
+          const iconData = data[2];
+          const context = this._iconCanvas.getContext('2d');
+          const img = new Image();
+
+          img.onload = () => {
+            context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
+          }
+          img.src = styleOptions.iconSrc;
+          done = true;
+        }
+      }
+      return done;
+    },
+
+    /**
+     * Redraws the IMS layer to remove any highlighting.
+     */
+    clearHighlights() {
+      this._redrawIMSLayer();
     },
 
     _handleFeatureAdded(evt) {
@@ -531,8 +779,26 @@
       const detail = {};
       if (evt.target && evt.target.feature) {
         detail.feature = evt.target.feature;
+        detail.layerId = this.id;
       }
       this.fire('px-map-layer-geojson-feature-tapped', detail);
+    },
+
+    _handleIconCanvasClicked(evt) {
+      const conPoint = evt.containerPoint;
+      const points = this._iconTree.search({
+        minX: conPoint.x,
+        minY: conPoint.y,
+        maxX: conPoint.x,
+        maxY: conPoint.y
+      });
+      // Note - only returns first match
+      if (points.length) {
+          this.fire('px-map-layer-geojson-feature-tapped', {
+            feature: points[0].feature,
+            layerId: this.id
+          });
+      }
     },
     /**
      * Fired when a feature is tapped by the user.
