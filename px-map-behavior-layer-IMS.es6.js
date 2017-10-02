@@ -334,11 +334,16 @@
             {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY},
             {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
         }
-        if (otherbounds.minY <= bounds.minY) {
+        if (otherBounds.minY <= bounds.minY) {
           return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
             {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
             {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
         }
+        // otherBounds inside bounds
+        return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
+          {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
       }
     },
 
@@ -433,7 +438,8 @@
        * Remove older bounds if exceeding max cache size - but only if they don't
        * overlap with the current bounds.
        */
-      for (let i = this._boundsCache.length - 1; i > this._maxBoundsCacheSize - 2; i--) {
+      const n = this.maxBoundsCacheSize - 2;
+      for (let i = this._boundsCache.length - 1; i > n; i--) {
         const bounds = this._boundsCache[i];
         if (!this._boundsOverlaps(bounds, mapBounds)) {
           const elementsToRemove = this._featureTreeCache.search(bounds);
