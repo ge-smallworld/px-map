@@ -87,9 +87,18 @@ If you do not provide an API key, the map will not load any tiles.
         type: String,
         value: 'en-GB',
         observer: 'shouldUpdateInst'
+      },
+
+      /**
+       * Optional custom styling for the map
+       */
+      mapStyle: {
+        type: Array,
+        value: [],
+        observer: 'shouldUpdateInst'
       }
     },
-
+    
     canAddInst: function() {
       return (typeof this.key === 'string') && this.key.length;
     },
@@ -111,6 +120,9 @@ If you do not provide an API key, the map will not load any tiles.
       if (lastOptions.region !== nextOptions.region) {
         this.elementInst.setRegion(nextOptions.region);
       }
+      if (lastOptions.mapStyle !== nextOptions.mapStyle) {
+        this.elementInst.setMapStyle(nextOptions.mapStyle);
+      }
     },
 
     getInstOptions: function() {
@@ -118,7 +130,8 @@ If you do not provide an API key, the map will not load any tiles.
         GoogleTileAPIKey: this.key,
         imagery: this.imagery,
         language: this.language,
-        region: this.region
+        region: this.region,
+        mapStyle: this.mapStyle
       };
     }
   });
