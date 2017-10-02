@@ -182,7 +182,7 @@
       },
 
       /**
-       * The current feature collection displayed by this layer.
+       * The feature collection displayed by this layer.
        *
        * @type {Object}
        */
@@ -191,13 +191,370 @@
       },
 
       /**
-       * Object to store feature id and feature pairs.
+       * Object to store the visible feature id and feature pairs.
        *
        * @type {Object}
        */
       _featureMap: {
         type: Object,
         value: {}
+      },
+
+      /**
+       * Cache of feature ids.
+       * @type {Set}
+       */
+      _featureCache: {
+        type: Set
+      },
+
+      /**
+       * An rtree cache of features.
+       * @type {Object}
+       */
+      _featureTreeCache: {
+        type: Object
+      },
+
+      /**
+       * Array of map bounds to track the cached features.
+       * @type {Array}
+       */
+      _boundsCache: {
+        type: Array
+      },
+
+      /**
+       * Defines whether features are cached to improve performance and reduce the number
+       * of request to the IMS service.
+       * @type {Boolean}
+       */
+      enableCache: {
+        type: Boolean,
+        value: true
+      },
+
+      /**
+       * Maximum size of the bounds cache. Defaults to 20.
+       * @type {Number}
+       */
+      maxBoundsCacheSize: {
+        type: Number,
+        value: 20
+      }
+    },
+
+    /**
+     * Returns whether otherBounds interacts (overlaps or touches) with bounds.
+     */
+    _boundsInteracts(bounds, otherBounds) {
+      return !(otherBounds.minX > bounds.maxX ||
+        otherBounds.minY > bounds.maxY ||
+        otherBounds.maxX < bounds.minX ||
+        otherBounds.maxY < bounds.minY);
+    },
+
+    /**
+     * Returns whether otherBounds overlaps bounds.
+     */
+    _boundsOverlaps(bounds, otherBounds) {
+      return !(otherBounds.minX >= bounds.maxX ||
+        otherBounds.minY >= bounds.maxY ||
+        otherBounds.maxX <= bounds.minX ||
+        otherBounds.maxY <= bounds.minY);
+    },
+
+    /**
+     * Returns whether otherBounds contains bounds.
+     */
+    _boundsContains(bounds, otherBounds) {
+      return !(otherBounds.minX > bounds.minX ||
+        otherBounds.minY > bounds.minY ||
+        otherBounds.maxX < bounds.maxX ||
+        otherBounds.maxY < bounds.maxY);
+    },
+
+    /**
+     * Returns an array of bounds defining the area of bounds that is not overlapped by otherBounds.
+     */
+    _splitBounds(bounds, otherBounds) {
+      if (otherBounds.minX <= bounds.minX) {
+        if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+          return [{minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
+        }
+        if (otherBounds.maxX >= bounds.maxX) {
+          if (otherBounds.minY >= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+            return [{minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+          }
+          if (otherBounds.minY <= bounds.minY && otherBounds.maxY <= bounds.maxY) {
+            return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY}];
+          }
+          if (otherBounds.minY >= bounds.minY && otherBounds.maxY <= bounds.maxY) {
+            return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+              {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+          }
+        }
+        if (otherBounds.minY > bounds.minY && otherBounds.maxY < bounds.maxY) {
+          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        }
+        if (otherBounds.maxY >= bounds.maxY) {
+          return [{minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        }
+        if (otherBounds.minY <= bounds.minY) {
+          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
+        }
+      } else if (otherBounds.maxX >= bounds.maxX) {
+        if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+          return [{minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY}];
+        }
+        if (otherBounds.minY > bounds.minY && otherBounds.maxY < bounds.maxY) {
+          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        }
+        if (otherBounds.maxY >= bounds.maxY) {
+          return [{minX: bounds.xmin, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        }
+        if (otherBounds.minY <= bounds.minY) {
+          return [{minX: bounds.xmin, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY}];
+        }
+      } else {
+        if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+          return [{minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
+            {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
+        }
+        if (otherBounds.maxY >= bounds.maxY) {
+          return [{minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY},
+            {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
+        }
+        if (otherbounds.minY <= bounds.minY) {
+          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
+            {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
+        }
+      }
+    },
+
+    /**
+     * Returns whether testBounds is overlapped by all of the bounds in boundsArray.
+     */
+    _boundsCovered(testBounds, boundsArray) {
+      if (!boundsArray) {
+        boundsArray = this._boundsCache;
+      }
+      for (let b of boundsArray) {
+        if (this._boundsContains(testBounds, b)) {
+          return true;
+        }
+      }
+      const n = boundsArray.length;
+      for (let i = 0; i < n; i++) {
+        const bounds = boundsArray[i];
+        if (this._boundsOverlaps(testBounds, bounds)) {
+          const splits = this._splitBounds(testBounds, bounds);
+          const newBoundsArray = boundsArray.slice();
+          newBoundsArray.splice(i, 1); // remove bounds for efficiency
+          let covered = true;
+          for (let split of splits) {
+            if (!this._boundsCovered(split, newBoundsArray)) {
+              covered = false;
+              break;
+            }
+          }
+          return covered;
+        }
+      }
+      return false;
+    },
+
+    /**
+     * Returns the current map bounds.
+     */
+    _getMapBounds() {
+      const mapBounds = this.parentNode.elementInst.getBounds();
+      return {
+        minX: mapBounds._southWest.lng,
+        minY: mapBounds._southWest.lat,
+        maxX: mapBounds._northEast.lng,
+        maxY: mapBounds._northEast.lat
+      };
+    },
+
+    /**
+     * Returns an array of position pairs from the feature coordinates.
+     */
+    _getFeatureCoords(feature) {
+      let coords = [];
+      const featureCoords = feature.geometry.coordinates;
+      switch (feature.geometry.type) {
+        case 'Point':
+          coords.push(featureCoords);
+          break;
+        case 'LineString':
+        case 'MultiPoint':
+          coords = featureCoords;
+          break;
+        case 'Polygon':
+        case 'MultiLineString':
+          featureCoords.forEach(someCoords => {
+            coords.push.apply(coords, someCoords);
+          });
+          break;
+        case 'MultiPolygon':
+          featureCoords.forEach(someCoords => {
+            someCoords.forEach(someMoreCoords => {
+              coords.push.apply(coords, someMoreCoords);
+            });
+          });
+      }
+      return coords;
+    },
+
+    /**
+     * Maintains the cache of features.
+     * Removes older bounds from the cache if exceeding max cache size.
+     * Adds new bounds and features to the cache.
+     */
+    _updateFeatureCache() {
+      if (!this.enableCache) {
+        return;
+      }
+
+      const mapBounds = this._getMapBounds();
+
+      /*
+       * Remove older bounds if exceeding max cache size - but only if they don't
+       * overlap with the current bounds.
+       */
+      for (let i = this._boundsCache.length - 1; i > this._maxBoundsCacheSize - 2; i--) {
+        const bounds = this._boundsCache[i];
+        if (!this._boundsOverlaps(bounds, mapBounds)) {
+          const elementsToRemove = this._featureTreeCache.search(bounds);
+          elementsToRemove.forEach(element => {
+            let remove = true;
+            for (let b of this._boundsCache) {
+              if (b !== bounds && this._boundsInteracts(element, b)) {
+                remove = false;
+                break;
+              }
+            }
+            if (remove) {
+              this._featureCache.delete(element.feature.id);
+              this._featureTreeCache.remove(element);
+            }
+          });
+          this._boundsCache.splice(i, 1);
+        }
+      }
+
+      // Add new features from the current feature collection to the cache
+      const features = this.featureCollection.features;
+      const elementsToAdd = [];
+      features.forEach(feature => {
+        if (!this._featureCache.has(feature.id)) {
+          const coords = this._getFeatureCoords(feature);
+          let minX = coords[0][0];
+          let minY = coords[0][1];
+          let maxX = coords[0][0];
+          let maxY = coords[0][1];
+          for (let i = 1; i < coords.length; i++) {
+            const c = coords[i];
+            if (c[0] < minX) {
+              minX = c[0];
+            } else if (c[0] > maxX) {
+              maxX = c[0];
+            }
+            if (c[1] < minY) {
+              minY = c[1];
+            } else if (c[1] > maxY) {
+              maxY = c[1];
+            }
+          }
+          elementsToAdd.push({
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY,
+            feature: feature
+          });
+          this._featureCache.add(feature.id);
+        }
+      });
+
+      this._featureTreeCache.load(elementsToAdd); // Load as an array for efficiency
+      this._boundsCache.unshift(mapBounds);
+    },
+
+    /**
+     * Returns a feature collection for the current bounds from the cache if possible.
+     */
+    _getFeatureCollectionFromCache() {
+      if (this.enableCache) {
+        const mapBounds = this._getMapBounds();
+        if (this._boundsCovered(mapBounds)) {
+          const result = this._featureTreeCache.search(mapBounds);
+          const features = [];
+          result.forEach(element => {
+            features.push(element.feature);
+          });
+          return {
+            type: 'FeatureCollection',
+            features: features
+          };
+        }
+      }
+    },
+
+    /**
+     * Updates the data displayed by this layer from the cache.
+     * This is a temporary update while data is being fetched from IMS.
+     * Only updates if there is more feature in the cache to show.
+     */
+    _updateFeaturesFromCache() {
+      if (!this.enableCache) {
+        return;
+      }
+
+      const nBounds = this._boundsCache.length
+      if (nBounds === 0) {
+        return;
+      }
+      /*
+       * Quick test to check there is more data to draw - checks if there is more
+       * than one cached bounds intersecting the new map bounds i.e. more than just
+       * the last bounds.
+       */
+      const mapBounds = this._getMapBounds();
+      let count = 0;
+      for (let i = 0; i < nBounds; i++) {
+        const bounds = this._boundsCache[i];
+        if (this._boundsOverlaps(mapBounds, bounds)) {
+          count++;
+          if (count > 1) {
+            const elements = this._featureTreeCache.search(mapBounds);
+            const features = [];
+            elements.forEach(element => {
+              features.push(element.feature);
+            });
+            const featureCol = {
+              type: 'FeatureCollection',
+              features: features
+            };
+
+            this._clearIMSLayer();
+            this._updateIconCanvas();
+            this._updateFeatures(featureCol);
+
+            break;
+          }
+        }
       }
     },
 
@@ -244,8 +601,18 @@
     _clearIMSLayer() {
       this.elementInst.clearLayers();
       if (this._iconCanvas) {
+        // Prevent further async image rendering
+        const map = this._featureMap
+        for (let featureId in map) {
+          const iconData = map[featureId][2];
+          if (iconData) {
+            iconData.image.onLoad = null;
+          }
+        }
+        // Clear the icon canvas
         this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
       }
+      // Clear caches
       this._featureMap = {};
       this.featureCollection = undefined;
       this._iconTree.clear();
@@ -253,12 +620,12 @@
 
     /**
      * Redraws the feaures in the layer.
+     * Note: Does NOT fire event 'IMS-layer-ready'
      */
-    _redrawIMSLayer() {
+    redrawIMSLayer() {
       if (!this.featureCollection) {
         return;
       }
-      
       if (this.parentNode.elementInst.getZoom() < this._getLayerStartingZoomValue()) {
         return;
       }
@@ -268,17 +635,13 @@
       if (this._iconCanvas) {
         const context = this._iconCanvas.getContext('2d');
         const map = this._featureMap;
-
+        // Clear the icon canvas
         context.clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
-
+        // Redraw the icons
         for (let featureId in map) {
           const iconData = map[featureId][2];
           if (iconData) {
-            const img = new Image();
-            img.onload = () => {
-              context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
-            }
-            img.src = iconData.iconSrc;
+            iconData.image.src = iconData.iconSrc;
           }
         }
       } else {
@@ -348,12 +711,14 @@
           maxY: y + iconSize[1],
           feature: feature,
           latlng: latlng,
-          iconSrc: iconUrl
+          iconSrc: iconUrl,
+          image: img
         };
 
         // Store icon data in rtree for selection lookup and feature map for highlight lookup
         this._iconTree.insert(iconData);
         this._featureMap[feature.id][2] = iconData;
+
         // Draw image on canvas
         img.onload = () => {
           context.drawImage(img, x, y, iconSize[0], iconSize[1]);
@@ -423,16 +788,21 @@
         pane: paneName
       });
 
-      if(this.editable) {
+      if (this.editable) {
         this._addEditableTools(mapInst, IMSLayer);
       }
 
-      if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+      if (this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
         this._requestCollectionsFromIMS(options, initialBounds);
       }
 
       // Setup rtree for storing points for selection
       this._iconTree = new rbush(16);
+
+      // Caches to store features
+      this._featureCache = new Set();
+      this._featureTreeCache = new rbush();
+      this._boundsCache = [];
 
       //Bind to px-maps moveend to re-request the data with new bounds
       //If layer is not going to be rendered at the current zoom level, don't load
@@ -455,13 +825,13 @@
     _requestCollectionsFromIMS(options, bounds) {
       this.url = `/v1/collections/${options.layerName}/spatial-query/bbox-interacts?`+
       `left=${bounds._southWest.lng}&right=${bounds._northEast.lng}&top=${bounds._northEast.lat}&bottom=${bounds._southWest.lat}`;
-      if(options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+      if (options.demo) this.url = 'demo/px-map-layer-geojson-data.json';
       this.querySelector('#get-collection').generateRequest();
     },
 
     //Ensures that layer is visible at the current zoom level only if it should be, if not it clears it
     _checkZoomLevelVisibilities() {
-      if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+      if (this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
         const bounds = this.parentNode.elementInst.getBounds();
         const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
         this.setNewBounds(boundsArray);
@@ -508,10 +878,10 @@
         collectionName = 'demo';
       }
 
-      //Now that we have the data, add it to the instance
       this._clearIMSLayer();
-      this._updateIconCanvas()
+      this._updateIconCanvas();
       this._updateFeatures(eventContext.detail.response);
+      this._updateFeatureCache();
 
       this.fire('IMS-layer-ready', collectionName);
     },
@@ -627,9 +997,9 @@
         };
 
         //Request the new IMS collection
-        const currentBounds = this.parentNode.elementInst.getBounds();
-        if(this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
-          this._requestCollectionsFromIMS(nextOptions, currentBounds);
+        const mapBounds = this.parentNode.elementInst.getBounds();
+        if (this.parentNode.elementInst.getZoom() >= this._getLayerStartingZoomValue()) {
+          this._requestCollectionsFromIMS(nextOptions, mapBounds);
           if (nextOptions.showFeatureProperties) {
             this._bindFeaturePopups();
           }
@@ -674,7 +1044,7 @@
 
     setNewBounds(boundsArray) {
       //Ensure it is a valid numeric array first
-      if(boundsArray && boundsArray.length === 4 && !boundsArray.some(isNaN)) {
+      if (boundsArray && boundsArray.length === 4 && !boundsArray.some(isNaN)) {
 
         boundsArray[0] < -180 ? boundsArray[0] = -180 : null;
         boundsArray[1] > 180 ? boundsArray[1] = 180 : null;
@@ -683,14 +1053,26 @@
 
         this.url = `/v1/collections/${this.layerName}/spatial-query/bbox-interacts?`+
           `left=${boundsArray[0]}&right=${boundsArray[1]}&top=${boundsArray[2]}&bottom=${boundsArray[3]}`;
-        if(this.demo) this.url = 'demo/px-map-layer-geojson-data.json';
+        if (this.demo) this.url = 'demo/px-map-layer-geojson-data.json';
 
         //Cancel existing request (if there is one) and generate a new one.
         const ironAjax = this.querySelector('#get-collection');
         if (ironAjax.lastRequest) {
           ironAjax.lastRequest.abort();
         }
-        ironAjax.generateRequest();
+
+        // Try and get data from cache
+        const featureCol = this._getFeatureCollectionFromCache();
+        if (featureCol) {
+          this._clearIMSLayer();
+          this._updateIconCanvas();
+          this._updateFeatures(featureCol);
+
+          this.fire('IMS-layer-ready', this.layerName);
+        } else {
+          ironAjax.generateRequest();
+          this._updateFeaturesFromCache();
+        }
       }
     },
 
@@ -717,26 +1099,12 @@
                         : (layer.setStyle(styleOptions));
           done = true;
         } else if (data[2]) {
-          const iconData = data[2];
-          const context = this._iconCanvas.getContext('2d');
-          const img = new Image();
-
-          img.onload = () => {
-            context.drawImage(img, iconData.minX, iconData.minY, iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
-          }
-          img.src = styleOptions.iconSrc;
+          data[2].image.src = styleOptions.iconSrc;
           done = true;
         }
       }
 
       return done;
-    },
-
-    /**
-     * Redraws the IMS layer to remove any highlighting.
-     */
-    clearHighlights() {
-      this._redrawIMSLayer();
     },
 
     _handleFeatureAdded(evt) {
