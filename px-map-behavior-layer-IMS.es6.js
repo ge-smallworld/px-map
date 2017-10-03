@@ -274,76 +274,90 @@
         otherBounds.maxY < bounds.maxY);
     },
 
+    // Divide bounds not intersecting otherBounds if otherBounds.minX <= bounds.minX
+    _splitBoundsLeft(bounds, otherBounds) {
+      if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+        return [{minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
+      }
+      if (otherBounds.maxX >= bounds.maxX) {
+        if (otherBounds.minY >= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+          return [{minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        }
+        if (otherBounds.minY <= bounds.minY && otherBounds.maxY <= bounds.maxY) {
+          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY}];
+        }
+        if (otherBounds.minY >= bounds.minY && otherBounds.maxY <= bounds.maxY) {
+          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        }
+      }
+      if (otherBounds.minY > bounds.minY && otherBounds.maxY < bounds.maxY) {
+        return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+      }
+      if (otherBounds.maxY >= bounds.maxY) {
+        return [{minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+      }
+      if (otherBounds.minY <= bounds.minY) {
+        return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
+      }
+    },
+
+    // Divide bounds not intersecting otherBounds if otherBounds.maxX >= bounds.maxX
+    _splitBoundsRight(bounds, otherBounds) {
+      if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+        return [{minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY}];
+      }
+      if (otherBounds.minY > bounds.minY && otherBounds.maxY < bounds.maxY) {
+        return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+      }
+      if (otherBounds.maxY >= bounds.maxY) {
+        return [{minX: bounds.xmin, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+      }
+      if (otherBounds.minY <= bounds.minY) {
+        return [{minX: bounds.xmin, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY}];
+      }
+    },
+
+    _splitBoundsCentre(bounds, otherBounds) {
+      if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
+        return [{minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
+          {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
+      }
+      if (otherBounds.maxY >= bounds.maxY) {
+        return [{minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY},
+          {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
+      }
+      if (otherBounds.minY <= bounds.minY) {
+        return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+          {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
+          {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
+      }
+      // otherBounds inside bounds
+      return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
+        {minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
+        {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY},
+        {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+    },
+
     /**
      * Returns an array of bounds defining the area of bounds that is not overlapped by otherBounds.
      */
     _splitBounds(bounds, otherBounds) {
       if (otherBounds.minX <= bounds.minX) {
-        if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
-          return [{minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
-        }
-        if (otherBounds.maxX >= bounds.maxX) {
-          if (otherBounds.minY >= bounds.minY && otherBounds.maxY >= bounds.maxY) {
-            return [{minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
-          }
-          if (otherBounds.minY <= bounds.minY && otherBounds.maxY <= bounds.maxY) {
-            return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY}];
-          }
-          if (otherBounds.minY >= bounds.minY && otherBounds.maxY <= bounds.maxY) {
-            return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-              {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
-          }
-        }
-        if (otherBounds.minY > bounds.minY && otherBounds.maxY < bounds.maxY) {
-          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-            {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
-        }
-        if (otherBounds.maxY >= bounds.maxY) {
-          return [{minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
-        }
-        if (otherBounds.minY <= bounds.minY) {
-          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-            {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
-        }
+        return this._splitBoundsLeft(bounds, otherBounds);
       } else if (otherBounds.maxX >= bounds.maxX) {
-        if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
-          return [{minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY}];
-        }
-        if (otherBounds.minY > bounds.minY && otherBounds.maxY < bounds.maxY) {
-          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-            {minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
-        }
-        if (otherBounds.maxY >= bounds.maxY) {
-          return [{minX: bounds.xmin, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
-        }
-        if (otherBounds.minY <= bounds.minY) {
-          return [{minX: bounds.xmin, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY}];
-        }
+        return this._splitBoundsRight(bounds, otherBounds);
       } else {
-        if (otherBounds.minY <= bounds.minY && otherBounds.maxY >= bounds.maxY) {
-          return [{minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
-            {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
-        }
-        if (otherBounds.maxY >= bounds.maxY) {
-          return [{minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: bounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY},
-            {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: bounds.maxY}];
-        }
-        if (otherBounds.minY <= bounds.minY) {
-          return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-            {minX: bounds.minX, minY: bounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
-            {minX: otherBounds.maxX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY}];
-        }
-        // otherBounds inside bounds
-        return [{minX: bounds.minX, minY: otherBounds.maxY, maxX: bounds.maxX, maxY: bounds.maxY},
-          {minX: bounds.minX, minY: otherBounds.minY, maxX: otherBounds.minX, maxY: otherBounds.maxY},
-          {minX: otherBounds.maxX, minY: otherBounds.minY, maxX: bounds.maxX, maxY: otherBounds.maxY},
-          {minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: otherBounds.minY}];
+        return this._splitBoundsCentre(bounds, otherBounds);
       }
     },
 
@@ -354,19 +368,20 @@
       if (!boundsArray) {
         boundsArray = this._boundsCache;
       }
-      for (let b of boundsArray) {
-        if (this._boundsContains(testBounds, b)) {
+      for (let otherBounds of boundsArray) {
+        if (this._boundsContains(testBounds, otherBounds)) {
           return true;
         }
       }
-      const n = boundsArray.length;
-      for (let i = 0; i < n; i++) {
+      const boundsLength = boundsArray.length;
+      for (let i = 0; i < boundsLength; i++) {
         const bounds = boundsArray[i];
         if (this._boundsOverlaps(testBounds, bounds)) {
           const splits = this._splitBounds(testBounds, bounds);
           const newBoundsArray = boundsArray.slice();
-          newBoundsArray.splice(i, 1); // remove bounds for efficiency
           let covered = true;
+
+          newBoundsArray.splice(i, 1); // remove bounds for efficiency
           for (let split of splits) {
             if (!this._boundsCovered(split, newBoundsArray)) {
               covered = false;
@@ -398,6 +413,7 @@
     _getFeatureCoords(feature) {
       let coords = [];
       const featureCoords = feature.geometry.coordinates;
+
       switch (feature.geometry.type) {
         case 'Point':
           coords.push(featureCoords);
@@ -419,34 +435,26 @@
             });
           });
       }
+
       return coords;
     },
 
     /**
-     * Maintains the cache of features.
-     * Removes older bounds from the cache if exceeding max cache size.
-     * Adds new bounds and features to the cache.
+     * Remove older bounds from the cache if exceeding max cache size - but only
+     * if they don't overlap with the current bounds.
      */
-    _updateFeatureCache() {
-      if (!this.enableCache) {
-        return;
-      }
-
+    _removeOldBoundsFromCache() {
       const mapBounds = this._getMapBounds();
+      const cacheSize = this.maxBoundsCacheSize - 2;
 
-      /*
-       * Remove older bounds if exceeding max cache size - but only if they don't
-       * overlap with the current bounds.
-       */
-      const n = this.maxBoundsCacheSize - 2;
-      for (let i = this._boundsCache.length - 1; i > n; i--) {
+      for (let i = this._boundsCache.length - 1; i > cacheSize; i--) {
         const bounds = this._boundsCache[i];
         if (!this._boundsOverlaps(bounds, mapBounds)) {
           const elementsToRemove = this._featureTreeCache.search(bounds);
           elementsToRemove.forEach(element => {
             let remove = true;
-            for (let b of this._boundsCache) {
-              if (b !== bounds && this._boundsInteracts(element, b)) {
+            for (let otherBounds of this._boundsCache) {
+              if (otherBounds !== bounds && this._boundsInteracts(element, otherBounds)) {
                 remove = false;
                 break;
               }
@@ -459,10 +467,16 @@
           this._boundsCache.splice(i, 1);
         }
       }
+    },
 
-      // Add new features from the current feature collection to the cache
+    /**
+     * Add new features from the current feature collection to the cache
+     */
+    _addNewBoundsToCache() {
+      const mapBounds = this._getMapBounds();
       const features = this.featureCollection.features;
       const elementsToAdd = [];
+
       features.forEach(feature => {
         if (!this._featureCache.has(feature.id)) {
           const coords = this._getFeatureCoords(feature);
@@ -496,6 +510,27 @@
 
       this._featureTreeCache.load(elementsToAdd); // Load as an array for efficiency
       this._boundsCache.unshift(mapBounds);
+    },
+
+    /**
+     * Maintains the cache of features.
+     * Removes older bounds from the cache if exceeding max cache size.
+     * Adds new bounds and features to the cache.
+     */
+    _updateFeatureCache() {
+      if (this.enableCache) {
+        this._removeOldBoundsFromCache();
+        this._addNewBoundsToCache();
+      }
+    },
+
+    /**
+     * Clear the cache of map bounds and features.
+     */
+    clearFeatureCache() {
+      this._featureCache.clear();
+      this._featureTreeCache.clear();
+      this._boundsCache = [];
     },
 
     /**
@@ -618,7 +653,7 @@
         // Clear the icon canvas
         this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
       }
-      // Clear caches
+      // Clear current visible data
       this._featureMap = {};
       this.featureCollection = undefined;
       this._iconTree.clear();
