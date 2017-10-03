@@ -429,6 +429,7 @@
       if (evt.target && evt.target.feature) {
         detail.feature = evt.target.feature;
       }
+      console.log(evt);
       this.fire('px-map-layer-geojson-feature-tapped', detail);
     },
     /**
