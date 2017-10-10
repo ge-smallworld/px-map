@@ -241,8 +241,28 @@
       maxBoundsCacheSize: {
         type: Number,
         value: 20
-      }
+      },
+
+    /**
+     * Default Marker Icon
+     * @type {String}
+     */
+    defaultMarkerIcon: {
+      type: String,
+      value: `<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16"
+      width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3"
+      fill="#88BDE6" fill-opacity="0.4"/></svg>`
     },
+
+    /**
+     * default Marker Icon URL
+     * @type {String}
+     */
+    defaultMarkerIconURL: {
+      type: String,
+      value: 'data:image/svg+xml;base64,' + btoa(this.defaultMarkerIcon)
+    }
+  },
 
     /**
      * Returns whether otherBounds interacts (overlaps or touches) with bounds.
@@ -728,16 +748,16 @@
         iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
         iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
         if (iconOptions.divIcon) {
-            iconOptions.html = iconOptions.html || defaultMarkerIcon;
+            iconOptions.html = iconOptions.html || this.defaultMarkerIcon;
             markerIcon = L.divIcon(iconOptions);
         } else {
-            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
+            iconOptions.iconUrl = iconOptions.iconUrl || this.defaultMarkerIconURL;
             markerIcon = L.icon(iconOptions);
         }
         return new L.Marker(latlng, {icon: markerIcon, pane: paneName});
       } else {
         const mapInst = this.parentNode.elementInst;
-        const iconUrl = options.markerIconOptions.iconUrl || defaultMarkerIconURL;
+        const iconUrl = options.markerIconOptions.iconUrl || this.defaultMarkerIconURL;
         const iconSize = options.markerIconOptions.iconSize || [16, 16];
         const iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
         const conPoint = mapInst.latLngToContainerPoint(latlng);
@@ -795,8 +815,6 @@
     },
 
     createInst(options) {
-      const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
-      const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
       const paneName =  options.pane.name || options.layerName;
       const attributeProperties = this.getInstOptions().featureStyle;
@@ -1020,8 +1038,6 @@
      * new style is not the same as the old.
      */
     updateInst(lastOptions, nextOptions) {
-      const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
-      const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const paneName = lastOptions.pane.name || lastOptions.layerName;
 
       if (nextOptions.layerName.length < 0) {
