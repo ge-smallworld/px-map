@@ -252,16 +252,16 @@
       value: `<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16"
       width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3"
       fill="#88BDE6" fill-opacity="0.4"/></svg>`
-    },
-
-    /**
-     * default Marker Icon URL
-     * @type {String}
-     */
-    defaultMarkerIconURL: {
-      type: String,
-      value: 'data:image/svg+xml;base64,' + btoa(this.defaultMarkerIcon)
     }
+
+    // /**
+    //  * default Marker Icon URL
+    //  * @type {String}
+    //  */
+    // defaultMarkerIconURL: {
+    //   type: String,
+    //   value: 'data:image/svg+xml;base64,' + btoa(this.defaultMarkerIcon)
+    // }
   },
 
     /**
@@ -744,6 +744,7 @@
       if (this.editable) {
         let markerIcon;
         const iconOptions = options.markerIconOptions;
+        const defaultMarkerIconURL = 'data:image/svg+xml;base64,' + btoa(this.defaultMarkerIcon);
 
         iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
         iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
@@ -751,13 +752,13 @@
             iconOptions.html = iconOptions.html || this.defaultMarkerIcon;
             markerIcon = L.divIcon(iconOptions);
         } else {
-            iconOptions.iconUrl = iconOptions.iconUrl || this.defaultMarkerIconURL;
+            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
             markerIcon = L.icon(iconOptions);
         }
         return new L.Marker(latlng, {icon: markerIcon, pane: paneName});
       } else {
         const mapInst = this.parentNode.elementInst;
-        const iconUrl = options.markerIconOptions.iconUrl || this.defaultMarkerIconURL;
+        const iconUrl = options.markerIconOptions.iconUrl || defaultMarkerIconURL;
         const iconSize = options.markerIconOptions.iconSize || [16, 16];
         const iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
         const conPoint = mapInst.latLngToContainerPoint(latlng);
