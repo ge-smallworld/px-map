@@ -253,15 +253,6 @@
       width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3"
       fill="#88BDE6" fill-opacity="0.4"/></svg>`
     }
-
-    // /**
-    //  * default Marker Icon URL
-    //  * @type {String}
-    //  */
-    // defaultMarkerIconURL: {
-    //   type: String,
-    //   value: 'data:image/svg+xml;base64,' + btoa(this.defaultMarkerIcon)
-    // }
   },
 
     /**
