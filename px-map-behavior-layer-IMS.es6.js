@@ -57,6 +57,11 @@
         type: Object
       },
 
+      _iconImages: {
+        type: Object,
+        value: {}
+      },
+
       /**
        * Rtree for storing point position data.
        *
@@ -272,6 +277,20 @@
         otherBounds.minY > bounds.minY ||
         otherBounds.maxX < bounds.maxX ||
         otherBounds.maxY < bounds.maxY);
+    },
+
+    /**
+     * Returns the intersection between bounds and otherBounds if they overlap.
+     */
+    _getBoundsIntersection(bounds, otherBounds) {
+      if (this._boundsOverlaps(bounds, otherBounds)) {
+        return {
+          minX: Math.max(bounds.minX, otherBounds.minX),
+          minY: Math.max(bounds.minY, otherBounds.minY),
+          maxX: Math.min(bounds.maxX, otherBounds.maxX),
+          maxY: Math.min(bounds.maxY, otherBounds.maxY)
+        };
+      }
     },
 
     // Divide bounds not intersecting otherBounds if otherBounds.minX <= bounds.minX
@@ -562,39 +581,34 @@
       if (!this.enableCache) {
         return;
       }
-
       const nBounds = this._boundsCache.length
       if (nBounds === 0) {
         return;
       }
-      /*
-       * Quick test to check there is more data to draw - checks if there is more
-       * than one cached bounds intersecting the new map bounds i.e. more than just
-       * the last bounds.
-       */
+
       const mapBounds = this._getMapBounds();
-      let count = 0;
-      for (let i = 0; i < nBounds; i++) {
-        const bounds = this._boundsCache[i];
-        if (this._boundsOverlaps(mapBounds, bounds)) {
-          count++;
-          if (count > 1) {
-            const elements = this._featureTreeCache.search(mapBounds);
-            const features = [];
-            elements.forEach(element => {
-              features.push(element.feature);
-            });
-            const featureCol = {
-              type: 'FeatureCollection',
-              features: features
-            };
+      const lastBounds = this._boundsCache[nBounds - 1];
+      const intersect = this._getBoundsIntersection(mapBounds, lastBounds);
+      if (intersect) {
+        const elements = this._featureTreeCache.search(mapBounds);
+        const oldElements = this._featureTreeCache.search(intersect);
+        /*
+         * Update the map if there is significantly more features available in the cache for the
+         * new bounds compared to what is currently displayed.
+         */ 
+        if (elements.length > oldElements.length * 1.1) {
+          const features = [];
+          elements.forEach(element => {
+            features.push(element.feature);
+          });
+          const featureCol = {
+            type: 'FeatureCollection',
+            features: features
+          };
 
-            this._clearIMSLayer();
-            this._updateIconCanvas();
-            this._updateFeatures(featureCol);
-
-            break;
-          }
+          this._clearIMSLayer();
+          this._updateIconCanvas();
+          this._updateFeatures(featureCol);
         }
       }
     },
@@ -637,30 +651,77 @@
     },
 
     /**
+     * Clears the icon canvas.
+     */
+    _clearIconCanvas() {
+      if (this._iconCanvas) {
+        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+      }
+    },
+
+    /**
      * Removes the features from the layer.
      */
     _clearIMSLayer() {
+      this._clearIconCanvas();
       this.elementInst.clearLayers();
-      if (this._iconCanvas) {
-        // Prevent further async image rendering
-        const map = this._featureMap
-        for (let featureId in map) {
-          const iconData = map[featureId][2];
-          if (iconData) {
-            iconData.image.onLoad = null;
-          }
-        }
-        // Clear the icon canvas
-        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
-      }
-      // Clear current visible data
+      // Clear current visible data caches
       this._featureMap = {};
       this.featureCollection = undefined;
       this._iconTree.clear();
     },
 
     /**
-     * Redraws the feaures in the layer.
+     * Clears the icon canvas and redraws the points in the default icon.
+     */
+    _redrawIconCanvas() {
+      if (this._iconCanvas) {
+        const map = this._featureMap;
+        // Clear the icon canvas
+        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+        // Redraw the icons
+        for (let featureId in map) {
+          const iconData = map[featureId][2];
+          if (iconData) {
+            this._drawIcon(iconData);
+          }
+        }
+      }
+    },
+
+    /**
+     * Redraws the Leaflet Layers in this IMS layer.
+     */
+    _redrawLayers() {
+      // Adds the appropriate feature data to the layer again to create new layers.
+      const map = this._featureMap;
+      const features = [];
+
+      for (let featureId in map) {
+        const data = map[featureId];
+        if (data[1]) {
+          features.push(data[0]);
+        }
+      }
+
+      const featureCol = {
+        type: 'FeatureCollection',
+        features: features
+      };
+
+      this.elementInst.clearLayers();
+      this.elementInst.addData(featureCol);
+      
+      // Add new layers to the feature map.
+      const layers = this.elementInst._layers;
+      for (let i in layers) {
+        const layer = layers[i];
+        map[layer.feature.id][1] = layer;
+      }
+    },
+
+    /**
+     * Redraws the features in the layer.
      * Note: Does NOT fire event 'IMS-layer-ready'
      */
     redrawIMSLayer() {
@@ -671,22 +732,33 @@
         return;
       }
 
-      this.elementInst.clearLayers();
+      const layersLength = Object.keys(this.elementInst._layers).length;
 
-      if (this._iconCanvas) {
-        const context = this._iconCanvas.getContext('2d');
-        const map = this._featureMap;
-        // Clear the icon canvas
-        context.clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
-        // Redraw the icons
-        for (let featureId in map) {
-          const iconData = map[featureId][2];
-          if (iconData) {
-            iconData.image.src = iconData.iconSrc;
-          }
-        }
+      this._redrawIconCanvas();
+      if (layersLength > 0) {
+        this._redrawLayers();
+      }
+    },
+
+    _drawIcon(iconData, iconUrl) {
+      if (!iconUrl) {
+        // Use default icon url
+        iconUrl = iconData.iconUrl;
+      }
+      const iconImages = this._iconImages;
+      let img = iconImages[iconUrl];
+      const context = this._iconCanvas.getContext('2d');
+      if (img) {
+        context.drawImage(img, iconData.minX, iconData.minY,
+          iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
       } else {
-        this._updateFeatures(this.featureCollection);
+        img = new Image();
+        img.onload = () => {
+          iconImages[iconUrl] = img;
+          context.drawImage(img, iconData.minX, iconData.minY,
+            iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
+        };
+        img.src = iconUrl;
       }
     },
 
@@ -695,9 +767,7 @@
      * @param {String} paneName - name of the layer element
      */
     _addIconCanvas(paneName) {
-      if (this.editable || !this.markerIconOptions) {
-        return;
-      }
+      if (this.editable) return;
 
       const mapInst = this.parentNode.elementInst;
       const width = window.getComputedStyle(mapInst._container).width;
@@ -721,50 +791,41 @@
      * on a canvas.
      */
     _addIcon(feature, latlng, paneName, options) {
+      const iconOptions = options.markerIconOptions;
+      iconOptions.iconUrl = iconOptions.iconUrl || this.markerIconOptions.iconURL;
+      iconOptions.iconSize = iconOptions.iconSize || [16, 16];
+      iconOptions.iconAnchor = iconOptions.iconAnchor || [8, 8];
+
       if (this.editable) {
         let markerIcon;
-        const iconOptions = options.markerIconOptions;
-
-        iconOptions.iconSize = options.markerIconOptions.iconSize || [16, 16];
-        iconOptions.iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
+  
         if (iconOptions.divIcon) {
-            iconOptions.html = iconOptions.html || defaultMarkerIcon;
+            iconOptions.html = iconOptions.html || this.markerIconOptions.html;
             markerIcon = L.divIcon(iconOptions);
         } else {
-            iconOptions.iconUrl = iconOptions.iconUrl || defaultMarkerIconURL;
             markerIcon = L.icon(iconOptions);
         }
         return new L.Marker(latlng, {icon: markerIcon, pane: paneName});
       } else {
         const mapInst = this.parentNode.elementInst;
-        const iconUrl = options.markerIconOptions.iconUrl || defaultMarkerIconURL;
-        const iconSize = options.markerIconOptions.iconSize || [16, 16];
-        const iconAnchor = options.markerIconOptions.iconAnchor || [8, 8];
         const conPoint = mapInst.latLngToContainerPoint(latlng);
-        const x = conPoint.x - iconAnchor[0];
-        const y = conPoint.y - iconAnchor[1];
-        const context = this._iconCanvas.getContext('2d');
-        const img = new Image();
+        const x = conPoint.x - iconOptions.iconAnchor[0];
+        const y = conPoint.y - iconOptions.iconAnchor[1];
         const iconData = {
           minX: x,
           minY: y,
-          maxX: x + iconSize[0],
-          maxY: y + iconSize[1],
+          maxX: x + iconOptions.iconSize[0],
+          maxY: y + iconOptions.iconSize[1],
           feature: feature,
           latlng: latlng,
-          iconSrc: iconUrl,
-          image: img
+          iconUrl: iconOptions.iconUrl
         };
 
         // Store icon data in rtree for selection lookup and feature map for highlight lookup
         this._iconTree.insert(iconData);
         this._featureMap[feature.id][2] = iconData;
 
-        // Draw image on canvas
-        img.onload = () => {
-          context.drawImage(img, x, y, iconSize[0], iconSize[1]);
-        }
-        img.src = iconUrl;
+        this._drawIcon(iconData);
       }
     },
 
@@ -795,11 +856,23 @@
     },
 
     createInst(options) {
-      const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
-      const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const mapInst = this.parentNode.elementInst;
       const paneName =  options.pane.name || options.layerName;
       const attributeProperties = this.getInstOptions().featureStyle;
+
+      // Set default icon if required
+      if (!this.markerIconOptions) {
+        this.markerIconOptions = {};
+      }
+      this.markerIconOptions.html = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
+      if (!this.markerIconOptions.iconUrl) {
+        this.markerIconOptions.iconUrl = "data:image/svg+xml;base64," + btoa(this.markerIconOptions.html);
+      }
+
+      // Create default icon image
+      const img = new Image();
+      img.src = this.markerIconOptions.iconUrl;
+      this._iconImages[this.markerIconOptions.iconUrl] = img;
 
       //Create a custom pane to draw onto so that we can control the draw order.
       mapInst.createPane(paneName);
@@ -850,9 +923,7 @@
       mapInst.on({
         zoomstart: () => {
           // TODO update the transform of the canvas whilst zooming
-          if (this._iconCanvas) {
-            this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
-          }
+          this._clearIconCanvas();
         },
         moveend: () => {
           this._checkZoomLevelVisibilities();
@@ -877,7 +948,7 @@
         const boundsArray = [bounds._southWest.lng, bounds._northEast.lng, bounds._southWest.lat, bounds._northEast.lat];
         this.setNewBounds(boundsArray);
       } else {
-        this.elementInst.clearLayers();
+        this._clearIMSLayer();
       }
     },
 
@@ -885,9 +956,8 @@
      * Updates the width, height and transform of the icon canvas.
      */
     _updateIconCanvas() {
-      if (!this._iconCanvas) {
-        return;
-      }
+      if (!this._iconCanvas) return;
+
       const mapInst = this.parentNode.elementInst;
 
       // Update canvas transform
@@ -1020,17 +1090,16 @@
      * new style is not the same as the old.
      */
     updateInst(lastOptions, nextOptions) {
-      const defaultMarkerIcon = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
-      const defaultMarkerIconURL = "data:image/svg+xml;base64," + btoa(defaultMarkerIcon);
       const paneName = lastOptions.pane.name || lastOptions.layerName;
 
       if (nextOptions.layerName.length < 0) {
-        this.elementInst.clearLayers();
+        this._clearIMSLayer();
       }
       else if (nextOptions.layerName.length > 0 && (lastOptions.layerName !== nextOptions.layerName || lastOptions.featureStyleHash !== nextOptions.featureStyleHash)) {
         const styleAttributeProperties = this.getInstOptions().featureStyle;
 
-        this.elementInst.clearLayers();
+        this.clearFeatureCache();
+        this._clearIMSLayer();
 
         this.elementInst.options.style = (feature) => {
           const featureProperties = feature.properties.style || {};
@@ -1126,23 +1195,19 @@
      */
     highlightFeature(featureId, styleOptions) {
       let done = false;
-
-      if (this.parentNode.elementInst.getZoom() < this._getLayerStartingZoomValue()) {
-          return done;
+      const data = this._featureMap[featureId];
+      if (!data || this.parentNode.elementInst.getZoom() < this._getLayerStartingZoomValue()) {
+        return done;
       }
 
-      const data = this._featureMap[featureId];
-
-      if (data) {
-        if (data[1]) {
-          const layer = data[1];
-          layer._icon ? (layer._icon.setAttribute('src', styleOptions.iconSrc))
-                        : (layer.setStyle(styleOptions));
-          done = true;
-        } else if (data[2]) {
-          data[2].image.src = styleOptions.iconSrc;
-          done = true;
-        }
+      if (data[1]) {
+        const layer = data[1];
+        layer._icon ? (layer._icon.setAttribute('src', styleOptions.iconSrc))
+                      : (layer.setStyle(styleOptions));
+        done = true;
+      } else if (data[2]) {
+        this._drawIcon(data[2], styleOptions.iconSrc)
+        done = true;
       }
 
       return done;
