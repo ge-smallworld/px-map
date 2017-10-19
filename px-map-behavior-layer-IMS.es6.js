@@ -740,23 +740,34 @@
       }
     },
 
-    _drawIcon(iconData, iconUrl) {
-      if (!iconUrl) {
-        // Use default icon url
-        iconUrl = iconData.iconUrl;
+    _drawIcon(iconData, styleOptions) {
+      let iconUrl = iconData.iconUrl;
+      let x = iconData.minX;
+      let y = iconData.minY;
+      let width = iconData.maxX - x;
+      let height = iconData.maxY - y;
+
+      if (styleOptions) {
+        iconUrl = styleOptions.iconUrl || styleOptions.iconSrc || iconUrl;
+        if (styleOptions.iconAnchor) {
+          x = iconData.pixelPoint.x - styleOptions.iconAnchor[0];
+          y = iconData.pixelPoint.y - styleOptions.iconAnchor[1];
+        }
+        if (styleOptions.iconSize) {
+          width = styleOptions.iconSize[0];
+          height = styleOptions.iconSize[1];
+        }
       }
-      const iconImages = this._iconImages;
-      let img = iconImages[iconUrl];
+
+      let img = this._iconImages[iconUrl];
       const context = this._iconCanvas.getContext('2d');
       if (img) {
-        context.drawImage(img, iconData.minX, iconData.minY,
-          iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
+        context.drawImage(img, x, y, width, height);
       } else {
         img = new Image();
         img.onload = () => {
-          iconImages[iconUrl] = img;
-          context.drawImage(img, iconData.minX, iconData.minY,
-            iconData.maxX - iconData.minX, iconData.maxY - iconData.minY);
+          this._iconImages[iconUrl] = img;
+          context.drawImage(img, x, y, width, height);
         };
         img.src = iconUrl;
       }
@@ -808,9 +819,9 @@
         return new L.Marker(latlng, {icon: markerIcon, pane: paneName});
       } else {
         const mapInst = this.parentNode.elementInst;
-        const conPoint = mapInst.latLngToContainerPoint(latlng);
-        const x = conPoint.x - iconOptions.iconAnchor[0];
-        const y = conPoint.y - iconOptions.iconAnchor[1];
+        const pixelPoint = mapInst.latLngToContainerPoint(latlng);
+        const x = pixelPoint.x - iconOptions.iconAnchor[0];
+        const y = pixelPoint.y - iconOptions.iconAnchor[1];
         const iconData = {
           minX: x,
           minY: y,
@@ -818,6 +829,7 @@
           maxY: y + iconOptions.iconSize[1],
           feature: feature,
           latlng: latlng,
+          pixelPoint: pixelPoint,
           iconUrl: iconOptions.iconUrl
         };
 
@@ -1216,7 +1228,7 @@
                       : (layer.setStyle(styleOptions));
         done = true;
       } else if (data[2]) {
-        this._drawIcon(data[2], styleOptions.iconSrc)
+        this._drawIcon(data[2], styleOptions)
         done = true;
       }
 
