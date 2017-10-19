@@ -871,8 +871,10 @@
 
       // Create default icon image
       const img = new Image();
+      img.onload = () => {
+        this._iconImages[this.markerIconOptions.iconUrl] = img;
+      };
       img.src = this.markerIconOptions.iconUrl;
-      this._iconImages[this.markerIconOptions.iconUrl] = img;
 
       //Create a custom pane to draw onto so that we can control the draw order.
       mapInst.createPane(paneName);
@@ -1120,17 +1122,25 @@
         if (!nextOptions.showFeatureProperties) this._unbindFeaturePopups();
       }
       else if (lastOptions.markerIconOptionsHash !== nextOptions.markerIconOptionsHash) {
-        this.elementInst.pointToLayer = (feature, latlng) => {
+        this.elementInst.options.pointToLayer = (feature, latlng) => {
           this._addIcon(feature, latlng, paneName, nextOptions);
         };
 
-        this._clearIMSLayer();
+        // Clear cache because icons have changed
+        this.clearFeatureCache();
+        // Clear icon canvas and layers
+        this._clearIconCanvas();
+        this.elementInst.clearLayers();
+        // Add current feature collection to update
         this._updateFeatures(this.featureCollection);
 
         if (nextOptions.showFeatureProperties) {
           this._bindFeaturePopups();
         }
-      } else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
+
+        this.fire('IMS-layer-ready', this.layerName);
+      }
+      else if (lastOptions.pane.zIndex !== nextOptions.pane.zIndex) {
         this.parentNode.elementInst.getPane(paneName).style.zIndex = nextOptions.pane.zIndex;
       }
     },
