@@ -762,12 +762,12 @@
       let img = this._iconImages[iconUrl];
       const context = this._iconCanvas.getContext('2d');
       if (img) {
-        context.drawImage(img, x, y, width, height);
+        context.drawImage(img, x * devicePixelRatio, y * devicePixelRatio, width * devicePixelRatio, height * devicePixelRatio);
       } else {
         img = new Image();
         img.onload = () => {
           this._iconImages[iconUrl] = img;
-          context.drawImage(img, x, y, width, height);
+          context.drawImage(img, x * devicePixelRatio, y * devicePixelRatio, width * devicePixelRatio, height * devicePixelRatio);
         };
         img.src = iconUrl;
       }
@@ -793,6 +793,13 @@
 
       mapInst.addEventListener('click', (evt) => {
         this._handleIconCanvasClicked(evt);
+      });
+
+      // Sort handlers by z index
+      const clickHandlers = mapInst._events.click;
+      clickHandlers[clickHandlers.length - 1].zIndex = this.pane.zIndex;
+      clickHandlers.sort((a, b) => {
+        return a.zIndex - b.zIndex;
       });
     },
 
@@ -981,12 +988,16 @@
       const transY = - parseInt(transParts[5]);
       this._iconCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
 
-      // Update canvas size to match the map
-      const width = parseInt(window.getComputedStyle(mapInst._container).width);
-      const height = parseInt(window.getComputedStyle(mapInst._container).height);
-      if (this._iconCanvas.width != width || this._iconCanvas.height != height) {
-        this._iconCanvas.width = width;
-        this._iconCanvas.height = height;
+      const width = parseFloat(window.getComputedStyle(mapInst._container).width);
+      const height = parseFloat(window.getComputedStyle(mapInst._container).height);
+
+      if (this._iconCanvas.width != width * devicePixelRatio || this._iconCanvas.height != height * devicePixelRatio) {
+        // Upscale the canvas content
+        this._iconCanvas.width = width * devicePixelRatio;
+        this._iconCanvas.height = height * devicePixelRatio;
+        // Downscale the presentation
+        this._iconCanvas.style.width = width.toString() + 'px';
+        this._iconCanvas.style.height = height.toString() + 'px';
       }
     },
 
@@ -1292,11 +1303,13 @@
 
     _handleIconCanvasClicked(evt) {
       const conPoint = evt.containerPoint;
+      const x = conPoint.x;
+      const y = conPoint.y;
       const points = this._iconTree.search({
-        minX: conPoint.x,
-        minY: conPoint.y,
-        maxX: conPoint.x,
-        maxY: conPoint.y
+        minX: x,
+        minY: y,
+        maxX: x,
+        maxY: y
       });
       // Note - only returns first match
       if (points.length) {
