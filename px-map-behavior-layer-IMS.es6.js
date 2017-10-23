@@ -1311,12 +1311,22 @@
         maxX: x,
         maxY: y
       });
-      // Note - only returns first match
+
       if (points.length) {
-          this.fire('px-map-layer-geojson-feature-tapped', {
-            feature: points[0].feature,
-            layerId: this.id
-          });
+        // Find the closest point to the click event
+        let result;
+        let minDist = Infinity;
+        points.forEach(point => {
+          const dist = point.pixelPoint.distanceTo(conPoint);
+          if (dist < minDist) {
+            minDist = dist;
+            result = point.feature;
+          }
+        });
+        this.fire('px-map-layer-geojson-feature-tapped', {
+          feature: result,
+          layerId: this.id
+        });
       }
     },
     /**
