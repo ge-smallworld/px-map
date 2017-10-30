@@ -810,7 +810,7 @@
      */
     _addIcon(feature, latlng, paneName, options) {
       const iconOptions = options.markerIconOptions;
-      iconOptions.iconUrl = iconOptions.iconUrl || this.markerIconOptions.iconURL;
+      iconOptions.iconUrl = iconOptions.iconUrl || this.markerIconOptions.iconUrl;
       iconOptions.iconSize = iconOptions.iconSize || [16, 16];
       iconOptions.iconAnchor = iconOptions.iconAnchor || [8, 8];
 
@@ -883,7 +883,9 @@
       if (!this.markerIconOptions) {
         this.markerIconOptions = {};
       }
-      this.markerIconOptions.html = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
+      if (!this.markerIconOptions.html) {
+        this.markerIconOptions.html = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"  height="16" width="16"><circle cx="8" cy="8" r="6" stroke="#3E87E8" stroke-width="3" fill="#88BDE6" fill-opacity="0.4"/></svg>';
+      }
       if (!this.markerIconOptions.iconUrl) {
         this.markerIconOptions.iconUrl = "data:image/svg+xml;base64," + btoa(this.markerIconOptions.html);
       }
