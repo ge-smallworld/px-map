@@ -35,7 +35,8 @@
     "leaflet.markercluster": "1.0.3",
     "leaflet-bing-tiles": "^1.0.0",
     "leaflet-google-tiles": "https://github.com/ge-smallworld/leaflet-google-layer.git",
-    "leaflet.editable": "^1.0.0"
+    "leaflet.editable": "^1.0.0",
+    "rbush": "https://github.com/ge-smallworld/rbush.git#master"
   },
   "devDependencies": {
     "px-clearfix-design": "^0.1.19",
