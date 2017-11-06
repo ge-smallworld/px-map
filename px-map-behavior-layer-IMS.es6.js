@@ -49,29 +49,6 @@
       },
 
       /**
-       * Canvas for rendering non-editable point images.
-       *
-       * @type {Object}
-       */
-      _iconCanvas: {
-        type: Object
-      },
-
-      _iconImages: {
-        type: Object,
-        value: {}
-      },
-
-      /**
-       * Rtree for storing point position data.
-       *
-       * @type {Object}
-       */
-      _iconTree: {
-        type: Object
-      },
-
-      /**
        * A switch to use certain settings for when the layer is being use on the demo page.
        *
        * @type {String}
@@ -187,11 +164,46 @@
       },
 
       /**
-       * The feature collection displayed by this layer.
+       * The visible feature collection displayed by this layer.
        *
        * @type {Object}
        */
       featureCollection: {
+        type: Object
+      },
+
+      /**
+       * Defines whether non-editable features are rendered directly on a canvas instead of creating Leaflet objects.
+       * Rendering directly on a canvas improves the performance of map.
+       * Currenly this only applies to point features.
+       * Defaults to false.
+       * @type {Boolean}
+       */
+      enableCanvasRendering: {
+        type: Boolean,
+        value: false
+      },
+
+      /**
+       * Canvas for rendering non-editable features directly.
+       *
+       * @type {Object}
+       */
+      _IMSCanvas: {
+        type: Object
+      },
+
+      _iconImages: {
+        type: Object,
+        value: {}
+      },
+
+      /**
+       * Rtree for storing point position data.
+       *
+       * @type {Object}
+       */
+      _iconTree: {
         type: Object
       },
 
@@ -203,6 +215,17 @@
       _featureMap: {
         type: Object,
         value: {}
+      },
+
+       /**
+       * Defines whether features are cached to improve performance and reduce the number
+       * of request to the IMS service.
+       * Defaults to true.
+       * @type {Boolean}
+       */
+      enableCache: {
+        type: Boolean,
+        value: true
       },
 
       /**
@@ -227,16 +250,6 @@
        */
       _boundsCache: {
         type: Array
-      },
-
-      /**
-       * Defines whether features are cached to improve performance and reduce the number
-       * of request to the IMS service.
-       * @type {Boolean}
-       */
-      enableCache: {
-        type: Boolean,
-        value: true
       },
 
       /**
@@ -607,7 +620,7 @@
           };
 
           this._clearIMSLayer();
-          this._updateIconCanvas();
+          this._updateIMSCanvas();
           this._updateFeatures(featureCol);
         }
       }
@@ -651,11 +664,11 @@
     },
 
     /**
-     * Clears the icon canvas.
+     * Clears the IMS canvas.
      */
-    _clearIconCanvas() {
-      if (this._iconCanvas) {
-        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+    _clearIMSCanvas() {
+      if (this._IMSCanvas) {
+        this._IMSCanvas.getContext('2d').clearRect(0, 0, this._IMSCanvas.width, this._IMSCanvas.height);
       }
     },
 
@@ -663,7 +676,7 @@
      * Removes the features from the layer.
      */
     _clearIMSLayer() {
-      this._clearIconCanvas();
+      this._clearIMSCanvas();
       this.elementInst.clearLayers();
       // Clear current visible data caches
       this._featureMap = {};
@@ -672,13 +685,13 @@
     },
 
     /**
-     * Clears the icon canvas and redraws the points in the default icon.
+     * Clears the IMS canvas and redraws the features in the default style.
      */
-    _redrawIconCanvas() {
-      if (this._iconCanvas) {
+    _redrawIMSCanvas() {
+      if (this._IMSCanvas) {
         const map = this._featureMap;
-        // Clear the icon canvas
-        this._iconCanvas.getContext('2d').clearRect(0, 0, this._iconCanvas.width, this._iconCanvas.height);
+        // Clear the IMS canvas
+        this._IMSCanvas.getContext('2d').clearRect(0, 0, this._IMSCanvas.width, this._IMSCanvas.height);
         // Redraw the icons
         for (let featureId in map) {
           const iconData = map[featureId][2];
@@ -734,7 +747,7 @@
 
       const layersLength = Object.keys(this.elementInst._layers).length;
 
-      this._redrawIconCanvas();
+      this._redrawIMSCanvas();
       if (layersLength > 0) {
         this._redrawLayers();
       }
@@ -760,7 +773,7 @@
       }
 
       let img = this._iconImages[iconUrl];
-      const context = this._iconCanvas.getContext('2d');
+      const context = this._IMSCanvas.getContext('2d');
       if (img) {
         context.drawImage(img, x * devicePixelRatio, y * devicePixelRatio, width * devicePixelRatio, height * devicePixelRatio);
       } else {
@@ -777,22 +790,22 @@
      * Creates a canvas in the layer pane for direct rendering of point features.
      * @param {String} paneName - name of the layer element
      */
-    _addIconCanvas(paneName) {
-      if (this.editable) return;
+    _addIMSCanvas(paneName) {
+      if (!this.enableCanvasRendering || this.editable) return;
 
       const mapInst = this.parentNode.elementInst;
       const width = window.getComputedStyle(mapInst._container).width;
       const height = window.getComputedStyle(mapInst._container).height;
 
-      this._iconCanvas = document.createElement('canvas');
-      this._iconCanvas.width = parseInt(width);
-      this._iconCanvas.height = parseInt(height);
-      this._iconCanvas.style.pointerEvents = 'none';
+      this._IMSCanvas = document.createElement('canvas');
+      this._IMSCanvas.width = parseInt(width);
+      this._IMSCanvas.height = parseInt(height);
+      this._IMSCanvas.style.pointerEvents = 'none';
 
-      mapInst.getPane(paneName).appendChild(this._iconCanvas);
+      mapInst.getPane(paneName).appendChild(this._IMSCanvas);
 
       mapInst.addEventListener('click', (evt) => {
-        this._handleIconCanvasClicked(evt);
+        this._handleIMSCanvasClicked(evt);
       });
 
       // Sort handlers by z index
@@ -814,7 +827,7 @@
       iconOptions.iconSize = iconOptions.iconSize || [16, 16];
       iconOptions.iconAnchor = iconOptions.iconAnchor || [8, 8];
 
-      if (this.editable) {
+      if (!this.enableCanvasRendering || this.editable) {
         let markerIcon;
   
         if (iconOptions.divIcon) {
@@ -902,7 +915,7 @@
       mapInst.getPane(paneName).classList.add('custom-pane');
       mapInst.getPane(paneName).style.zIndex = options.pane.zIndex;
 
-      this._addIconCanvas(paneName);
+      this._addIMSCanvas(paneName);
 
       //Get the initial bounds of the map to use for the first request to IMS
       const initialBounds = this.parentNode.elementInst.getBounds();
@@ -946,7 +959,7 @@
       mapInst.on({
         zoomstart: () => {
           // TODO update the transform of the canvas whilst zooming
-          this._clearIconCanvas();
+          this._clearIMSCanvas();
         },
         moveend: () => {
           this._checkZoomLevelVisibilities();
@@ -976,30 +989,30 @@
     },
 
     /**
-     * Updates the width, height and transform of the icon canvas.
+     * Updates the width, height and transform of the IMS canvas.
      */
-    _updateIconCanvas() {
-      if (!this._iconCanvas) return;
+    _updateIMSCanvas() {
+      if (!this._IMSCanvas) return;
 
       const mapInst = this.parentNode.elementInst;
 
       // Update canvas transform
-      const trans = window.getComputedStyle(this._iconCanvas.parentNode.parentNode).transform;
+      const trans = window.getComputedStyle(this._IMSCanvas.parentNode.parentNode).transform;
       const transParts = trans.match(/-?[\d\.]+/g);
       const transX = - parseInt(transParts[4]);
       const transY = - parseInt(transParts[5]);
-      this._iconCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
+      this._IMSCanvas.style.transform = `translate(${transX}px, ${transY}px)`;
 
       const width = parseFloat(window.getComputedStyle(mapInst._container).width);
       const height = parseFloat(window.getComputedStyle(mapInst._container).height);
 
-      if (this._iconCanvas.width != width * devicePixelRatio || this._iconCanvas.height != height * devicePixelRatio) {
+      if (this._IMSCanvas.width != width * devicePixelRatio || this._IMSCanvas.height != height * devicePixelRatio) {
         // Upscale the canvas content
-        this._iconCanvas.width = width * devicePixelRatio;
-        this._iconCanvas.height = height * devicePixelRatio;
+        this._IMSCanvas.width = width * devicePixelRatio;
+        this._IMSCanvas.height = height * devicePixelRatio;
         // Downscale the presentation
-        this._iconCanvas.style.width = width.toString() + 'px';
-        this._iconCanvas.style.height = height.toString() + 'px';
+        this._IMSCanvas.style.width = width.toString() + 'px';
+        this._IMSCanvas.style.height = height.toString() + 'px';
       }
     },
 
@@ -1017,7 +1030,7 @@
       }
 
       this._clearIMSLayer();
-      this._updateIconCanvas();
+      this._updateIMSCanvas();
       this._updateFeatures(eventContext.detail.response);
       this._updateFeatureCache();
 
@@ -1153,8 +1166,8 @@
 
         // Clear cache because icons have changed
         this.clearFeatureCache();
-        // Clear icon canvas and layers
-        this._clearIconCanvas();
+        // Clear IMS canvas and layers
+        this._clearIMSCanvas();
         this.elementInst.clearLayers();
         // Add current feature collection to update
         this._updateFeatures(this.featureCollection);
@@ -1210,7 +1223,7 @@
         const featureCol = this._getFeatureCollectionFromCache();
         if (featureCol) {
           this._clearIMSLayer();
-          this._updateIconCanvas();
+          this._updateIMSCanvas();
           this._updateFeatures(featureCol);
 
           this.fire('IMS-layer-ready', this.layerName);
@@ -1303,7 +1316,7 @@
       this.fire('px-map-layer-geojson-feature-tapped', detail);
     },
 
-    _handleIconCanvasClicked(evt) {
+    _handleIMSCanvasClicked(evt) {
       const conPoint = evt.containerPoint;
       const x = conPoint.x;
       const y = conPoint.y;
